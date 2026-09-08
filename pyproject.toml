@@ -1,0 +1,29 @@
+[project]
+name = "recall"
+version = "0.1.0"
+description = "RAG over personal course notes, with a hand-built evaluation harness."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pdfplumber>=0.11",
+]
+
+[project.scripts]
+recall-ingest = "recall.ingestion.pipeline:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "reportlab>=4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/recall"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

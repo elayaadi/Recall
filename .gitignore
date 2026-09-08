@@ -3,6 +3,8 @@ data/raw/*
 !data/raw/.gitkeep
 
 # Generated indexes, embeddings, eval run outputs
+data/chunks*.jsonl
+data/sample/*.pdf
 index/
 *.faiss
 *.npy
