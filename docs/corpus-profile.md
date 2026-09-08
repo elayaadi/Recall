@@ -21,11 +21,17 @@ to construct from adjacent-but-absent topics.
 
 ## Findings that shaped the design
 
-**No scanned documents.** 14 of 578 pages (2.4%) carry no text layer, spread
-over 7 files; only 4 of those contain an embedded image. The rest are blank or
-vector-drawn diagram slides. Nothing in this corpus needs OCR, so the v1
-out-of-scope decision on OCR costs nothing here. Text-less pages are still
-detected and reported at ingest rather than emitted as empty chunks.
+**No scanned documents.** Nothing in this corpus needs OCR, so the v1
+out-of-scope decision on OCR costs nothing here.
+
+*Corrected after implementation:* this section first reported "14 pages with no
+text layer", from a diagnostic that treated any page under 20 characters as
+empty. Those pages are not empty — they are **divider slides carrying a title
+and a bare slide number over a diagram**, e.g. "Turkish Internet" on page 29 of
+Lecture 3. The real figure is that **25 of 578 pages produce no chunk**: a
+handful with no text at all, the rest title-only diagram slides whose body
+cannot be read without OCR. Ingestion reports every one of them by page number
+rather than indexing a chunk that would match a query and then answer nothing.
 
 **No multi-level heading hierarchy anywhere.** 22 of 29 files are slide decks,
 where the structural unit is the slide, not a heading path. The 6 problem sheets
