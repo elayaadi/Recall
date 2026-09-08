@@ -47,10 +47,12 @@ Module folders, `SPEC.md`, `CLAUDE.md`, git, GitHub remote, initial commit.
 Parse markdown, PDF, and PowerPoint into a common chunked format carrying
 source file, section/heading, and page or slide number.
 
-**Corpus.** Mixed PDFs: some prose documents with real heading hierarchy, some
-slide decks exported to PDF, and some scanned. OCR is out of scope for v1, so
-scanned pages must be *detected and reported* at ingest — never silently
-emitted as empty chunks.
+**Corpus.** Measured, not assumed — see [docs/corpus-profile.md](docs/corpus-profile.md).
+29 PDFs from one course: 22 slide decks, 6 problem sheets, 1 syllabus; 578
+pages, ~43k words, English. **No scans** — 14 pages carry no text layer but are
+blank or vector diagrams, so OCR being out of scope costs nothing. Text-less
+pages are still detected and reported at ingest rather than emitted as empty
+chunks.
 
 ### 2a. Parsing libraries — decided
 
@@ -59,19 +61,29 @@ emitted as empty chunks.
 - **PPTX: `python-pptx`.** Effectively the only maintained reader; the real
   work is in what we extract (title placeholder vs. body, speaker notes,
   tables, reading order), not in the library choice.
-- **PDF: `pdfplumber` / `PyMuPDF`** — text spans with font size and position,
-  clustered to infer heading levels. Gives section-level citations
-  ("§3.2, p.14") and lets prose PDFs use the same structure-aware path as
-  markdown. Because the corpus is mixed, the PDF path needs a document-type
-  check: recover headings where structure exists, fall back to page-scoped
-  chunking for deck-style PDFs, and flag scanned pages as unindexable.
+- **PDF: `pdfplumber`** — for span-level font sizes, not for heading recovery.
 
-  Rejected: `pypdf` (~1h, page-granularity citations only — too coarse for the
-  prose half of the corpus). Rejected: ML layout models (`docling`, `marker`) —
-  best fidelity, but heavy dependencies and it makes the pipeline someone
-  else's model rather than a hand-built one.
+  *This reverses an earlier rationale.* The first version of this decision
+  justified a font-aware parser by font-size clustering to reconstruct heading
+  levels. Profiling killed that: no document in the corpus has a multi-level
+  heading hierarchy, so the clustering would have been built for a document
+  type we do not have.
 
-  Open sub-choice: pdfplumber (MIT, ~10× slower) vs. PyMuPDF (fast, AGPL).
+  Font data is still required, for one much simpler job — the slide title is
+  the largest-font span on the page. Measured against the plain-text
+  alternative ("first line after boilerplate"), the two agree on only **44%**
+  of 566 slides, and the disagreements are systematic: in PDF reading order the
+  page number often comes first, so a plain-text parser titles slides "1", "2",
+  "3". That rules out `pypdf` on evidence rather than taste.
+
+  Chosen pdfplumber over PyMuPDF: same capability for this job, MIT rather than
+  AGPL. PyMuPDF is ~10× faster, but 578 pages makes speed irrelevant, and AGPL
+  is a licence some employers' legal teams flag on sight — a poor thing to
+  carry in a repo whose purpose is being read by employers.
+
+  Rejected: ML layout models (`docling`, `marker`) — best fidelity, but heavy
+  dependencies, and they make the pipeline someone else's model rather than a
+  hand-built one.
 
 ### 2b. Chunking — decided: structure-aware, with uniform windowing kept as a measured baseline
 
@@ -85,12 +97,39 @@ uniformly sized: oversized units split at paragraph breaks, undersized units
 merge with siblings under the same parent.
 
 - *Markdown:* split at heading boundaries.
-- *PDF:* heading-based where structure is recoverable, else page-scoped. Chunks
-  never cross a page boundary, so page citations stay exact. Known wart:
-  paragraphs continuing across pages get cut.
-- *PPTX:* one slide = one chunk, always. Carries the slide title, the deck
-  section header, and the speaker notes — in lecture decks the notes are often
-  the only real prose.
+- *PDF — decks:* one slide (page) per chunk, merged across same-title runs; see
+  "Slide grouping" below.
+- *PDF — problem sheets:* one chunk per numbered problem, sub-parts kept with
+  their parent. Items are `1.`–`8.` at line start with `a)`–`d)` sub-parts;
+  numbering is validated as sequential, which separates real problem numbers
+  from incidental digits in prose ("3 MB"). Verified across all 6 files.
+- *PDF — syllabus:* split on ALL-CAPS section headings (11 across 3 pages).
+  Content is heavily tabular and flattens to a readable but row-ambiguous
+  stream; accepted for v1 and recorded as a known limitation.
+- *PPTX:* one slide = one chunk, carrying slide title, deck section header, and
+  speaker notes. Deferred until there are real .pptx files to test against.
+
+**Slide grouping (decks).** Consecutive slides sharing a title are merged into
+one chunk; a title change closes the chunk. Adjacency is load-bearing — the same
+title recurring non-adjacently (20 cases in the corpus, e.g. "Web caching" at
+slides 21–22 and again at 24–27) stays separate, because merging across
+intervening material would leave the chunk with no honest citation.
+
+Titles are normalised before comparison only — trailing `(cont.)` / `(cont)` /
+`(continued)` stripped, whitespace collapsed, case-insensitive — while the
+chunk keeps the run's original first title for display and citation. The author
+marked continuation explicitly in 11 titles; honouring the title as a topic
+boundary while ignoring the author's own "still the same topic" marker would be
+inconsistent rather than conservative. Measured effect is small and reported as
+such: 480 chunks strict, 472 normalised. Merged runs are size-capped as a guard
+(longest actual run is 9 slides, ~600–800 words).
+
+Rejected: merging by token count instead of title (reintroduces the tuned
+window the title boundary exists to avoid).
+
+**Boilerplate.** Lines repeating on >50% of a document's pages are stripped
+before chunking — every deck carries a copyright line on nearly every page that
+would otherwise land in every chunk and every embedding.
 
 The heading path is **prepended to the chunk text**, not merely stored as
 metadata. A bare slide bullet ("Requires O(n log n) time") is close to

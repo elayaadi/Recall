@@ -67,9 +67,17 @@ Format: `YYYY-MM-DD — <area>: <choice> — see SPEC.md §<n>`
 
 - 2026-09-08 — Markdown parsing: `markdown-it-py` AST, not regex — see SPEC.md §2a
 - 2026-09-08 — PPTX parsing: `python-pptx` — see SPEC.md §2a
-- 2026-09-08 — PDF parsing: `pdfplumber`/`PyMuPDF` with font-size heading
-  recovery; mixed corpus, so the path branches on document type and flags
-  scanned pages as unindexable (no OCR in v1) — see SPEC.md §2a
-- 2026-09-08 — Chunking: structure-aware per format (heading path prepended to
-  chunk text), with uniform token windowing kept as a committed baseline so
-  module 6 can measure the delta — see SPEC.md §2b
+- 2026-09-08 — Corpus profiled before designing the chunker; findings in
+  docs/corpus-profile.md are the basis for §2a/§2b
+- 2026-09-08 — PDF parsing: `pdfplumber` (MIT). Font data is for slide-title
+  detection, not heading recovery — no document in the corpus has a heading
+  hierarchy. `pypdf` ruled out by measurement (title heuristics agree 44%) —
+  see SPEC.md §2a
+- 2026-09-08 — Deck chunking: one slide per chunk, merging consecutive
+  same-title runs; titles normalised for `(cont.)` variants when comparing
+  only — see SPEC.md §2b
+- 2026-09-08 — Markdown and PPTX chunkers deferred until real files of those
+  types exist; the chunk schema and ingest interface stay format-agnostic
+- 2026-09-08 — Chunking: structure-aware per format (title/heading path
+  prepended to chunk text), with uniform token windowing kept as a committed
+  baseline so module 6 can measure the delta — see SPEC.md §2b
