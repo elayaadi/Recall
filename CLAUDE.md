@@ -65,4 +65,11 @@ docs/         architecture notes and diagrams
 
 Format: `YYYY-MM-DD — <area>: <choice> — see SPEC.md §<n>`
 
-_None yet._
+- 2026-09-08 — Markdown parsing: `markdown-it-py` AST, not regex — see SPEC.md §2a
+- 2026-09-08 — PPTX parsing: `python-pptx` — see SPEC.md §2a
+- 2026-09-08 — PDF parsing: `pdfplumber`/`PyMuPDF` with font-size heading
+  recovery; mixed corpus, so the path branches on document type and flags
+  scanned pages as unindexable (no OCR in v1) — see SPEC.md §2a
+- 2026-09-08 — Chunking: structure-aware per format (heading path prepended to
+  chunk text), with uniform token windowing kept as a committed baseline so
+  module 6 can measure the delta — see SPEC.md §2b
