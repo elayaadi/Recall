@@ -78,6 +78,9 @@ Format: `YYYY-MM-DD — <area>: <choice> — see SPEC.md §<n>`
   only — see SPEC.md §2b
 - 2026-09-08 — Markdown and PPTX chunkers deferred until real files of those
   types exist; the chunk schema and ingest interface stay format-agnostic
+- 2026-09-08 — Eval gold labels anchor to location + verbatim snippet, not
+  chunk ids, so labels survive re-chunking; a label matching zero chunks is a
+  hard error, never a silent 0 — see SPEC.md §2c
 - 2026-09-08 — Chunking: structure-aware per format (title/heading path
   prepended to chunk text), with uniform token windowing kept as a committed
   baseline so module 6 can measure the delta — see SPEC.md §2b

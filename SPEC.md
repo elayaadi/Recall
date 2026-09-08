@@ -4,7 +4,8 @@ A retrieval-augmented generation system that answers questions from personal
 study notes and course materials, with citations back to the source, and a
 hand-built evaluation harness that proves retrieval quality with real numbers.
 
-**Status:** scaffolding only. Every module below is `decision pending`.
+**Status:** module 2 (ingestion) fully decided, implementation not started.
+Modules 3–8 are `decision pending`.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning. This file is the answer to "why this and not X?" — it should
@@ -21,6 +22,7 @@ does not know, rather than inventing an answer.
 **Success criteria for v1**
 
 - Ingests markdown, PDF, and PPTX into one chunk format with usable metadata.
+  (PDF first; markdown and PPTX chunkers land when files of those types exist.)
 - Retrieval quality measured on a hand-written question set with standard
   metrics, recorded before and after any tuning.
 - Abstains rather than answering when retrieval finds nothing relevant.
@@ -42,7 +44,7 @@ Module folders, `SPEC.md`, `CLAUDE.md`, git, GitHub remote, initial commit.
 
 ---
 
-## 2. Ingestion — **2a, 2b decided; 2c pending**
+## 2. Ingestion — **decided; implementation pending**
 
 Parse markdown, PDF, and PowerPoint into a common chunked format carrying
 source file, section/heading, and page or slide number.
@@ -154,12 +156,45 @@ compromising, but doubles storage and decouples the retrieval unit from the
 context unit, complicating the eval harness. Reasonable v2 experiment once
 there are baseline numbers.
 
-### 2c. Chunk schema and citation anchoring — **decision pending**
+### 2c. Chunk schema and citation anchoring — decided: location + snippet
 
-What metadata every chunk carries, and how eval gold labels anchor so they
-survive re-chunking. See §6b — the two are the same decision.
+**Chunk schema.** Every chunk carries: the source file and its content hash;
+`doc_type` (`deck` / `problem_sheet` / `syllabus` / later `markdown`, `pptx`);
+a format-specific `locator`; the chunk text with its title prefix, plus the raw
+text without it; a token count; and `chunker` (`structural` or `window`) so the
+primary and baseline chunkers can coexist in one store and be compared in
+module 6.
 
-Options and reasoning: _to be filled in._
+Locators are structured, not stringly-typed, so citations render per format:
+
+```
+deck          {pages: [24,25,26,27], title: "Web caching"}
+problem_sheet {page: 1, problem: "4", parts: ["a","b"]}
+syllabus      {page: 2, section: "ASSESSMENT METHODS, WEIGHTS AND RULES"}
+```
+
+`chunk_id` is a deterministic hash of source + locator + text, used for
+citations and index keys at runtime.
+
+**Gold labels do not reference `chunk_id`.** They anchor to a location plus a
+verbatim snippet:
+
+```
+cs447 Lecture 5.pdf, slide 6, "waiting in the router's queue"
+```
+
+and are resolved to whatever chunk contains that snippet at eval time.
+
+Rejected: **labelling by `chunk_id`** — simplest schema, but every change to
+chunk size or chunker invalidates all ~35 labels, so tuning would mean
+re-labelling and the before/after comparison in §6 could never actually be run.
+Rejected: **content-hash ids** — stable under reordering, still broken by any
+chunking change; it delays the problem rather than solving it.
+
+**Resolution rules.** Snippet matching is whitespace- and case-normalised.
+Multiple matching chunks all count as relevant. A label matching **zero** chunks
+is a hard error that fails the eval run — never a silent score of 0, which would
+make a stale label look like a quality regression.
 
 ---
 
@@ -223,8 +258,8 @@ Open decisions:
 - **6a. Metrics** — likely Recall@k, MRR, nDCG; plus abstention precision/
   recall for the "not found" path. Which ones, and why those.
 - **6b. Question set design** — coverage across formats and question types
-  (factual lookup, multi-hop, unanswerable), and how gold chunks are labelled
-  so labels survive re-chunking.
+  (factual lookup, multi-hop, unanswerable). Label anchoring is already settled
+  in §2c: location + verbatim snippet, resolved to chunks at eval time.
 - **6c. Harness mechanics** — how runs are recorded and compared over time so
   "before and after tuning" is a real comparison, not a memory.
 
