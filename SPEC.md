@@ -45,7 +45,7 @@ Module folders, `SPEC.md`, `CLAUDE.md`, git, GitHub remote, initial commit.
 
 ---
 
-## 2. Ingestion — **decided; implementation pending**
+## 2. Ingestion — **done: decided, implemented, tested, measured**
 
 Parse markdown, PDF, and PowerPoint into a common chunked format carrying
 source file, section/heading, and page or slide number.
@@ -55,7 +55,7 @@ This is the private development corpus; what ships with the public repo is
 decided in §8a.
 29 PDFs from one course: 22 slide decks, 6 problem sheets, 1 syllabus; 578
 pages, ~43k words, English. **No scans**, so OCR being out of scope costs
-nothing. 25 of 578 pages produce no chunk — a few with no text layer, the rest
+nothing. 32 of 578 pages produce no chunk — a few with no text layer, the rest
 title-only divider slides over a diagram — and every one is reported by page
 number at ingest rather than indexed as a chunk that matches a query and then
 answers nothing.

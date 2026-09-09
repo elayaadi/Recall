@@ -28,7 +28,7 @@ out-of-scope decision on OCR costs nothing here.
 text layer", from a diagnostic that treated any page under 20 characters as
 empty. Those pages are not empty — they are **divider slides carrying a title
 and a bare slide number over a diagram**, e.g. "Turkish Internet" on page 29 of
-Lecture 3. The real figure is that **25 of 578 pages produce no chunk**: a
+Lecture 3. The real figure is that **32 of 578 pages produce no chunk**: a
 handful with no text at all, the rest title-only diagram slides whose body
 cannot be read without OCR. Ingestion reports every one of them by page number
 rather than indexing a chunk that would match a query and then answer nothing.
