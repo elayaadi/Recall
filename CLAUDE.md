@@ -55,7 +55,10 @@ multi-user auth, fine-tuning any model.
 ```bash
 uv run recall-ingest data/raw                    # PDFs -> data/chunks.jsonl
 uv run recall-ingest data/raw --chunker window   # the measured baseline chunker
-uv run pytest -q                                 # no corpus needed
+uv sync --extra local                            # the local embedding model
+uv run recall-index                              # chunks -> data/index/
+uv run pytest -q                                 # no corpus, no model, no network
+uv run pytest -q -m slow                         # the tests that need the model
 ```
 
 ## Repo layout
@@ -66,6 +69,7 @@ eval/         evaluation harness; eval/questions/ holds the hand-written set
 tests/        tests, mirroring the module layout
 scripts/      one-off inspection tools (e.g. reading chunks by hand)
 data/raw/     the working corpus — gitignored, never committed
+data/index/   the built vector index — gitignored, rebuilt by recall-index
 data/sample/  small committed fixtures for tests
 docs/         decision record, corpus profile, architecture notes
 ```
@@ -81,3 +85,10 @@ docs/         decision record, corpus profile, architecture notes
   hand — a stale number here is indistinguishable from a fabricated one.
 - Chunk quality is not fully covered by the tests. Defects have been found by
   reading `data/chunks.jsonl` directly that the suite passed straight over.
+  `scripts/inspect_index.py` exists for the same reason on the index side.
+- Tests use a fake embedder, so `uv run pytest -q` needs neither the model nor
+  a network. The tests that load the real model are marked `slow` and
+  deselected by default — run them with `-m slow` after touching `embed.py`.
+- The index records the embedder that built it and refuses to be queried by a
+  different one. After changing the embedder, rebuild rather than expecting the
+  mismatch to surface as bad results.

@@ -86,6 +86,13 @@ options rejected and why, is in the linked [SPEC.md](../SPEC.md) section.
   bodies under different titles. Deduplicating on the embedded field would
   have looked correct and left the problem standing — §3d.
 
+- **2026-09-09 — Near-duplicate handling stays deferred, now on a measurement
+  rather than a guess.** Exact deduplication leaves 10 entry pairs above 0.99
+  cosine and 58 above 0.95, and a real query returns the same assignment at
+  ranks 3 and 4 from two decks. The cost is real and recorded; the threshold
+  that would fix it is the kind of knob module 6 should measure rather than one
+  to guess at now — §3, measured result.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT
@@ -141,3 +148,12 @@ Kept visible rather than edited away, because the reasoning is the point.
   characters; byte-identical is 123/52. Both figures now appear in §2, and the
   distinction turned out to matter — the dedup decision in §3d turns on
   exactly which normalisation defines identity.
+
+- **Reading the output found what the tests did not, a second time.**
+  Inspecting the built index surfaced a module 2 defect that the chunk-level
+  inspection had passed over: 14 chunks carry `(cid:N)` sequences from glyphs
+  the PDF font maps to no Unicode code point, which corrupt embedded text and
+  defeat the title-stripping fix. Recorded in §2's known limitations and §3's
+  measured result, and left for a module 2 change rather than folded into the
+  indexing commit, since it alters chunk ids and would invalidate the index the
+  numbers were measured on.

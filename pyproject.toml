@@ -8,10 +8,18 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "pdfplumber>=0.11",
+    "numpy>=2.0",
 ]
+
+[project.optional-dependencies]
+# The default embedder is local, so this is what a fresh clone installs to
+# run the index. Tests need neither extra: they use a fake embedder.
+local = ["sentence-transformers>=3.0"]
+hosted = ["openai>=1.0"]
 
 [project.scripts]
 recall-ingest = "recall.ingestion.pipeline:main"
+recall-index = "recall.indexing.build:main"
 
 [dependency-groups]
 dev = [
@@ -29,3 +37,7 @@ packages = ["src/recall"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+# The suite must pass on a fresh clone with no corpus and no network, so the
+# tests that download a real embedding model are deselected by default.
+addopts = "-m 'not slow'"
+markers = ["slow: needs the real embedding model downloaded (~440 MB)"]

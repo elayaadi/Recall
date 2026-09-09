@@ -5,9 +5,10 @@ study notes and course materials, with citations back to the source, and a
 hand-built evaluation harness that proves retrieval quality with real numbers.
 
 **Status:** modules 1–2 done — ingestion is decided, implemented, tested, and
-measured against the real corpus. Module 3 is decided and awaiting
-implementation. Modules 4–8 are `decision pending`, except §8a (publication
-corpus), settled early because it constrains §6.
+measured against the real corpus, and module 3 with it — the index is decided,
+implemented, tested, and built against that corpus. Modules 4–8 are `decision
+pending`, except §8a (publication corpus), settled early because it constrains
+§6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -237,7 +238,13 @@ measures whether it is needed.
 as low-value chunks that mention many topics and answer none, as do divider
 slides whose text is just a section name. 76 chunks (14.4%) are under 15 words.
 No minimum chunk size is enforced: the threshold is exactly the kind of knob
-module 6 should measure rather than one to guess at now. 25 chunks contain the instructor's email address,
+module 6 should measure rather than one to guess at now. **14 chunks (2.7%)
+across 3 files carry `(cid:N)` sequences** — glyphs whose embedded font maps to
+no Unicode code point, which pdfplumber surfaces literally; 66 of the 68
+occurrences are `(cid:561)` standing in for a space. Found while inspecting the
+module 3 index, not by the chunk-level pass, and recorded in §3's measured
+result. They corrupt embedded text and defeat the title-stripping fix above,
+because the body copy of a title no longer matches the title itself. 25 chunks contain the instructor's email address,
 which matters only for the private development corpus (see §8a). Syllabus tables flatten to a row-ambiguous stream. A same-title
 run merged across a text-less page cites non-contiguous pages ("slides 2, 4"),
 which is correct but unusual to read.
@@ -284,7 +291,7 @@ make a stale label look like a quality regression.
 
 ---
 
-## 3. Indexing — **decided; implementation pending**
+## 3. Indexing — **done: decided, implemented, tested, measured**
 
 Turn chunks into a searchable index.
 
@@ -459,7 +466,7 @@ chunks collapsed, but it merges bodies differing in punctuation and case, and
 Near-duplicate deduplication by embedding similarity stays deferred until §6
 measures whether exact matching leaves a gap.
 
-### 3e. Implementation plan
+### 3e. Implementation
 
 - `indexing/embed.py` — the `Embedder` protocol and `LocalEmbedder`: bge query
   prefix, batching, L2-normalisation at embed time.
@@ -480,6 +487,55 @@ measures whether exact matching leaves a gap.
 - `scripts/inspect_index.py`, on the §2 precedent that reading real output
   found defects the suite passed over. The 76 chunks under 15 words are where
   to look first.
+
+
+### Measured result
+
+`uv run recall-index` over the 528-chunk corpus:
+
+| | |
+|---|---|
+| chunks in / entries out | 528 / 457 |
+| collapsed by §3d | 71 chunks into 52 groups |
+| embedder | `bge-base-en-v1.5`, 768 dimensions |
+| `vectors.npy` | 1.40 MB |
+| `index.json` (entries and locators) | 0.61 MB |
+| embedding cache | 1.43 MB |
+| first build, CPU | 34.9s |
+| rebuild from cache | 0.0s |
+| entries under 15 words | 54 (11.8%) |
+| entries standing for more than one location | 52 |
+
+The suite is 112 tests with no model and no network, plus 1 marked `slow` that
+loads the real model.
+
+**Two findings from reading real output**, on the module 2 precedent that this
+is where defects actually surface.
+
+**Exact deduplication leaves near-duplicates, and they cost top-k slots.** §3d
+deferred near-duplicate handling until it could be measured; it now is.
+Pairwise cosine over the 457 entries finds 10 pairs at ≥0.99, 17 at ≥0.98, and
+58 at ≥0.95 covering 97 entries. This is not theoretical: the query *why do
+routers drop packets* returns the same 4-slide assignment at ranks 3 and 4,
+once from `cs447 Lecture 5.pdf` and once from `cs447 Week 2 On-line.pdf`, which
+differ by 28 words of extracted text and score 0.9917 against each other. Two
+of five slots for one passage. Exact matching missed them because the bodies are
+not byte-identical, only nearly so. Still deferred rather than fixed here — the
+threshold is exactly the kind of knob §6 should measure — but it is now a
+measured cost rather than a possibility.
+
+**A module 2 defect the chunk-level inspection did not catch.** 14 chunks
+(2.7%) across 3 files contain `(cid:N)` sequences, 66 of the 68 occurrences
+being `(cid:561)` standing in for a space: `Example(cid:561)1:(cid:561)Peering`.
+These are glyphs the PDF's embedded font maps to no Unicode code point, which
+pdfplumber surfaces literally. They corrupt the embedded text directly, and
+they also defeat §2's title-stripping fix — the body copy of the title no
+longer matches the title itself, so both survive into the chunk
+(`Example 1: Peering and pricing * Example(cid:561)1:(cid:561)Peering…`).
+
+Not fixed in this module. It is a chunker change, so it would alter chunk ids
+and invalidate the index measured above; it belongs to module 2 and is recorded
+in §2's known limitations rather than folded in quietly here.
 
 ---
 

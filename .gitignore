@@ -4,6 +4,7 @@ data/raw/*
 
 # Generated indexes, embeddings, eval run outputs
 data/chunks*.jsonl
+data/index/
 data/sample/*.pdf
 index/
 *.faiss
