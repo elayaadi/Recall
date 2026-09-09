@@ -8,8 +8,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 measured against the real corpus, and module 3 with it — the index is decided,
 implemented, tested, and built against that corpus, and module 4 with it —
 retrieval is decided, implemented, tested, and run against the real index.
-Modules 5–8 are `decision pending`, except §8a
-(publication corpus), settled early because it constrains §6.
+Module 5 is decided and not yet implemented. Modules 6–8 are
+`decision pending`, except §8a (publication corpus), settled early because it
+constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -754,19 +755,216 @@ baseline observation, not as a result: §6 runs both properly.
 
 ---
 
-## 5. Generation — **decision pending**
+## 5. Generation — **decided: implementation not started**
 
-Produce a grounded answer with citations back to source chunks.
+Produce a grounded answer with citations back to source chunks, or refuse.
 
-Open decisions:
+The decisions below were settled together, and two of them constrain each
+other: 5a defaults to the backend least able to enforce 5b's output format.
+That tension is recorded in 5b rather than resolved by quietly weakening
+either choice.
 
-- **5a. Generation model** — local vs. hosted; which specific model.
-- **5b. Prompt and citation format** — how the model is constrained to the
-  retrieved context, and how citations are emitted and verified.
-- **5c. Grounding check** — whether and how we verify the answer is actually
-  supported by the cited chunks.
+Unlike module 4, there is no probe behind these. Nothing here is calibrated
+against a run, and the sections say so where it matters. §6 is what measures
+them.
 
-Options and reasoning: _to be filled in._
+### 5a. Generation model — decided: a `Generator` protocol, local by default, both measured in module 6
+
+The same shape as §3a, for two of the same reasons and against a materially
+different backdrop.
+
+**Cost decides nothing, again, and this time it is measured.** The 528 chunks
+in `data/chunks.jsonl` total 237,360 characters — mean 450 per chunk, median
+384, p90 778, max 4,079. A k=5 context is therefore about 2,250 characters at
+the mean and 3,890 at p90. Every candidate model in contention, local or
+hosted, holds that two orders of magnitude over. **Context window is not a
+constraint on this decision**, which removes the usual reason to reach for the
+largest available model, and per-answer cost at this size is negligible on any
+hosted option. What differs is behaviour.
+
+- **Reproducibility on a fresh clone.** §3a bought a credential-free path for
+  embedding specifically so §6 and §8a can promise the eval harness re-runs
+  from a clone. A hosted-only generator would narrow that promise again, one
+  module later, for the half of §6 that scores answers. Retrieval metrics stay
+  credential-free either way.
+- **Stability of the recorded numbers.** Hosted generation endpoints are
+  deprecated and updated in place; pinned local weights are not.
+- **Quality, and this is where the parallel to §3a breaks.** For embedding, the
+  candidates sat within a few benchmark points of each other and the local
+  default cost little. For grounded answering they do not: refusing when the
+  context does not answer, and not substituting what the model already knows
+  about networking, are exactly the behaviours a 7–8B local model is weakest
+  at and a frontier hosted model is strongest at. The gap is asserted here, not
+  measured — no run in this repo has compared them.
+
+**Decision.** Generation sits behind a `Generator` protocol. The default
+implementation is local, through Ollama. A hosted implementation is written to
+the same protocol. Module 6 runs the question set against both and reports the
+delta.
+
+**The protocol is doing a different job than it did in §3a, and it is recorded
+as such.** In §3a it kept a close call open. Here the call is not expected to
+be close; the protocol keeps the credential-free path working and makes the
+size of the gap a measured number instead of an assumption. If §6 shows the
+local default failing to abstain or fabricating past its context, that is a
+result to report and act on, not a surprise.
+
+Rejected: **hosted only** — better answers, negligible cost, and it would make
+§5b's option 3 available (see below); rejected because it makes half of §6
+unreproducible without credentials, which is the thing §3a spent a decision
+protecting. Rejected: **local only** — simpler, one backend, no extras to
+split; rejected because it forecloses the comparison rather than deferring it,
+and the comparison is the only way the paragraph above stops being an
+assertion.
+
+Rejected as a rationale rather than as an option: **reusing the OpenAI
+dependency already declared for the hosted embedder.** The shared thing is a
+package and an environment variable, not a design, and §3a deliberately left
+the two provider choices independent. Convenience is not evidence.
+
+### 5b. Prompt and citation format — decided: structured output, claims mapped to chunk ids
+
+The model returns an object, not prose to be parsed:
+
+```
+{"answer": "...",
+ "claims": [{"text": "...", "chunk_ids": ["..."]}],
+ "abstained": false,
+ "reason": ""}
+```
+
+**The criterion is what can be verified afterwards, which is why this section
+and 5c are one decision seen twice.** A claim-to-chunk mapping is the smallest
+structure that lets §5c ask a checkable question — *is this sentence supported
+by the chunk it names* — rather than the weaker one an inline marker permits,
+which is only *does this citation exist*.
+
+Rejected: **numbered inline markers** (`[1]…[5]` in the context, `[2]` in the
+prose). Its real advantage is that it works identically on every backend, which
+matters more than usual given 5a's protocol, and it needs nothing from the
+model beyond following an instruction. Rejected because a marker binds a
+citation to a position in a sentence rather than to a claim, so the only thing
+verifiable is that the marker resolves — the check §5c actually wants is not
+expressible over it.
+
+Rejected: **provider-native citations** — passing each chunk as a document
+block with citations enabled, so the API returns cited spans with character
+offsets into the exact chunk. This is the strongest of the three by a wide
+margin: the cited span is a verbatim substring of a real chunk, guaranteed
+upstream rather than checked downstream. Rejected because it exists only on the
+hosted path and cannot be reproduced locally, so adopting it as *the format*
+would decide 5a by the back door and would make §6's local-versus-hosted
+comparison a comparison of citation mechanisms rather than of models.
+
+**The known weakness, recorded rather than discovered later: the default
+backend is the one least able to enforce this format.** Ollama accepts a
+JSON-schema `format` parameter, so the API surface exists on both paths.
+Whether a 7–8B model honours the schema reliably over a question set is
+unmeasured, and it is a §6 number. Malformed output is therefore a first-class
+failure mode with a defined behaviour — surfaced as a generation failure, never
+a crash and never silently coerced into an answer — not an error path assumed
+not to be taken.
+
+One rule this format carries regardless of backend. **The model cites a
+passage; this repo expands that to locations.** A collapsed hit holds several
+citation strings (§4d) — the same passage re-released in two decks — and the
+prompt shows the passage once. Expanding after the model, never before, is what
+keeps the merged citations §4d exists to preserve.
+
+### 5c. Grounding check — decided: deterministic in the answer path, entailment judge at eval time
+
+Two checks at different strengths, in different places.
+
+**In the answer path, deterministic and free.** Every `chunk_id` a claim names
+must resolve to a chunk that was actually in that query's context, and each
+claim must share an n-gram with the chunk it cites. No model call, no latency,
+no cost. This catches fabricated ids and citation drift — a claim attached to a
+chunk that does not support it — and it catches nothing about a fluent claim
+that no chunk supports.
+
+**At eval time, an entailment judge.** For each claim, is it supported by the
+chunk it cites? This is the only level that catches the unsupported-but-fluent
+case. It lives in `eval/` and is reported as a number.
+
+Rejected: **no check beyond the prompt** — cheap and honest, and defensible if
+§6 measures grounding directly; rejected because it leaves §0's "grounded" as
+an intention with no mechanism, when the deterministic half costs nothing.
+
+Rejected: **the judge as a gate in the answer path** — the strongest guarantee
+available; rejected because it doubles latency and cost on every query to catch
+a failure whose rate has not been measured, and because a gate that blocks
+answers on the verdict of an unvalidated judge is worse than no gate. If §6
+measures the failure rate and it is high, this reopens.
+
+**The judge's own accuracy is unmeasured, and reporting it as a metric would
+assert more than was measured.** §6 either hand-labels a sample and reports
+judge-versus-human agreement alongside the score, or reports the judge's output
+as a diagnostic rather than as a grounding metric. This is the same class of
+problem as an uncalibrated threshold and gets the same treatment.
+
+### 5d. Generation-level abstention — decided: yes, independent of §4b
+
+§4b abstains when nothing scores above θ. There is a second failure it
+structurally cannot see: **five passages score well and none of them answers
+the question.** Retrieval measures similarity to the query and never asks
+whether a passage answers it, so no threshold on a similarity score can catch
+this. §0 lists abstaining rather than answering as a v1 success criterion, and
+§4b alone does not deliver it.
+
+**Decision.** Generation may abstain independently. Two mechanisms, and they
+are different in kind:
+
+- The model sets `abstained` in §5b's output when the context does not answer
+  the question. This is a judgement, not a threshold.
+- §5c's deterministic check forces an abstention when too few claims survive
+  verification. Its parameter — the minimum number of verified claims, default
+  1 — is a **constructor argument with an uncalibrated default**, per §4e. It
+  is a property of the generator and the corpus, and §6 sets it.
+
+The two abstention paths are reported separately in §6. Collapsing them into
+one number would make a retrieval miss indistinguishable from a generation
+refusal, which are different defects with different fixes.
+
+Rejected: **§4b as the only gate** — one threshold, one number, one thing to
+calibrate, and no second uncalibrated knob of exactly the kind §4e warns about.
+Rejected because the failure it leaves standing is the system answering
+confidently from passages that do not answer the question, and §6 would measure
+that with no mechanism available to fix it.
+
+### 5e. Implementation
+
+- `generation/models.py` — `Answer`, `Claim`, `Citation` as frozen dataclasses,
+  the shape `RetrievalResult` already has. An `Answer` records the generator
+  that produced it, for the reason the index records its embedder: a §6 number
+  must never be attributable to the wrong model.
+- `generation/prompt.py` — context assembly and the single place the
+  instruction text lives. The instruction is the whole grounding mechanism
+  before §5c runs, and no test can assert it works — only that it is present
+  and singular. Its behaviour is a §6 measurement, not a §5 claim.
+- `generation/generate.py` — the `Generator` protocol and both implementations,
+  mirroring `indexing/embed.py`. **Blocking, not streaming**: §5c's check needs
+  the whole answer before it can verify anything, so a streaming interface
+  would buffer to the same place. Streaming is additive to a blocking protocol
+  if §7 wants it; the reverse is an unpicking.
+- `generation/verify.py` — §5c's deterministic check. No model call.
+- `generation/answer.py` — a `recall-answer` command mirroring `recall-search`,
+  because modules 2 and 3 both shipped defects the suite passed over and
+  reading real output caught. Reading its output is part of this module.
+- `eval/grounding.py` — §5c's judge. Measured, never a gate.
+- Tests on a `FakeGenerator`, the way retrieval tests run on the fake embedder:
+  abstention on both paths, a fabricated `chunk_id` caught by the verifier, a
+  claim citing a chunk it does not overlap caught by the verifier, a collapsed
+  hit's citations surviving expansion, and malformed model output surfaced as a
+  failure rather than an answer. No model, no network, no corpus, no
+  credentials.
+
+**The `hosted` extra is split as part of this module.** `pyproject.toml`
+currently declares `hosted = ["openai"]`, which means "hosted *embedder*"; a
+generation provider makes that name inaccurate and would install an embedding
+dependency for anyone who wanted a generator. It becomes `hosted-embed` and
+`hosted-gen`. Doing it now is a small edit to `pyproject.toml` and the
+documented commands; doing it after §7 publishes an install command is a
+breaking change.
 
 ---
 

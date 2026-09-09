@@ -137,6 +137,71 @@ reopen it; §6 is where the thresholds get set.
   question set and the §8a corpus swap resets them. Shipping them as constants
   would make a placeholder indistinguishable from a measured value — §4b, §4e.
 
+## Generation — module 5
+
+Settled without a probe. Module 4's decisions rested on eight to ten real
+queries; these rest on the shape of the problem and on what §6 can measure
+afterwards. Each entry says which part is unmeasured.
+
+- **2026-09-09 — A `Generator` protocol, local by default, both measured in
+  module 6.** The same shape as §3a and, deliberately, not the same argument.
+  For embedding the candidates were close and the local default cost little;
+  for grounded answering the gap is expected to be wide, and the protocol's job
+  is to keep §6's clone-and-re-run path credential-free while turning the gap
+  into a measured number. Cost decides nothing and this time it is measured:
+  528 chunks, mean 450 characters, so a k=5 context is about 2,250 characters —
+  every candidate holds that with orders of magnitude to spare, and context
+  window constrains nothing. Reusing the OpenAI dependency already present for
+  the hosted embedder was rejected as a *rationale*: the shared thing is a
+  package and an environment variable, not a design — §5a.
+
+- **2026-09-09 — Citations as structured output: claims mapped to chunk ids.**
+  The criterion is what can be verified afterwards, which makes this one
+  decision with §5c rather than two. Inline numbered markers were rejected
+  despite working identically on every backend — a marker binds a citation to a
+  position, not to a claim, so the check §5c wants cannot be expressed over it.
+  Provider-native citations were rejected despite being the strongest mechanism
+  by a wide margin: available only on the hosted path, so adopting them as the
+  format would decide §5a by the back door and turn §6's comparison into one of
+  citation mechanisms rather than models — §5b.
+
+- **2026-09-09 — The default backend is the one least able to enforce the
+  chosen format, and that is recorded rather than resolved.** Ollama accepts a
+  JSON-schema `format` parameter so the surface exists on both paths; whether a
+  7–8B model honours it over a whole question set is unmeasured and is a §6
+  number. Malformed output is a defined failure mode, never silently coerced
+  into an answer — §5b.
+
+- **2026-09-09 — Grounding: deterministic in the answer path, entailment judge
+  at eval time.** Ids resolving to chunks that were in the context, plus an
+  n-gram overlap with the cited chunk — no model call, so it costs nothing to
+  always run. A judge as a gate was rejected: it doubles latency and cost on
+  every query to catch a failure whose rate is unmeasured, and a gate deciding
+  on an unvalidated judge is worse than no gate. The judge's own agreement with
+  a human is itself unmeasured, so §6 reports that agreement or reports the
+  judge as a diagnostic rather than as a metric — §5c.
+
+- **2026-09-09 — Generation abstains independently of §4b.** §4b measures
+  similarity to the query and structurally cannot see five well-scoring
+  passages that do not answer it, so no threshold on a similarity score closes
+  that gap. Two mechanisms of different kinds: the model's own judgement in the
+  output object, and a minimum count of claims surviving §5c's check — the
+  latter a constructor argument with an uncalibrated default, per §4e. The two
+  abstention paths are reported separately in §6, because a retrieval miss and
+  a generation refusal are different defects with different fixes — §5d.
+
+- **2026-09-09 — Blocking generation interface, not streaming.** §5c's check
+  needs the whole answer before it can verify anything, so a streaming
+  interface would buffer to the same place. Streaming is additive to a blocking
+  protocol if §7 wants it; the reverse is an unpicking — §5e.
+
+- **2026-09-09 — The `hosted` extra is split into `hosted-embed` and
+  `hosted-gen`.** `hosted = ["openai"]` meant "hosted *embedder*"; a second
+  provider makes the name inaccurate and would install an embedding dependency
+  for anyone wanting a generator. A small edit now, a breaking change to a
+  published install command later — §5e.
+
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT
