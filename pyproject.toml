@@ -15,12 +15,17 @@ dependencies = [
 # The default embedder is local, so this is what a fresh clone installs to
 # run the index. Tests need neither extra: they use a fake embedder.
 local = ["sentence-transformers>=3.0"]
-hosted = ["openai>=1.0"]
+# Split per SPEC.md 5e: `hosted` meant "hosted embedder", and a second provider
+# would have made the name install an embedding dependency for anyone who
+# wanted a generator. The generation half lands when 5a's provider is named —
+# the local generator needs no package at all, only a running Ollama.
+hosted-embed = ["openai>=1.0"]
 
 [project.scripts]
 recall-ingest = "recall.ingestion.pipeline:main"
 recall-index = "recall.indexing.build:main"
 recall-search = "recall.retrieval.search:main"
+recall-answer = "recall.generation.answer:main"
 
 [dependency-groups]
 dev = [
@@ -37,7 +42,7 @@ packages = ["src/recall"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 # The suite must pass on a fresh clone with no corpus and no network, so the
 # tests that download a real embedding model are deselected by default.
 addopts = "-m 'not slow'"

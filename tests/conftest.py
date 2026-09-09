@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,4 +88,51 @@ def make_chunk(
         locator=Locator(kind=doc_type, pages=pages, title=title),
         text=text,
         raw_text=raw_text if raw_text is not None else text,
+    )
+
+
+@dataclass
+class FakeGenerator:
+    """A generator that returns scripted output and never opens a socket.
+
+    Generation tests are about the outcome a given response produces —
+    abstention, verification, malformed output — none of which need a real
+    model, and CLAUDE.md requires the suite to pass on a fresh clone with no
+    network and no credentials.
+
+    Responses are returned in order and the last one repeats, so a judge called
+    once per claim needs only one. Prompts and schemas are recorded, because
+    what reaches the model is as much a subject of the tests as what comes back.
+    """
+
+    responses: list[str]
+    name: str = "fake-generator"
+
+    def __post_init__(self) -> None:
+        self.prompts: list[str] = []
+        self.schemas: list[dict] = []
+
+    def complete(self, prompt: str, schema: dict) -> str:
+        self.prompts.append(prompt)
+        self.schemas.append(schema)
+        if not self.responses:
+            raise AssertionError("FakeGenerator was called with no responses left")
+        return self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
+
+
+def generation_response(
+    *,
+    answer: str = "an answer",
+    claims: list[tuple[str, list[str]]] | None = None,
+    abstained: bool = False,
+    reason: str = "",
+) -> str:
+    """A well-formed model response, built the way the schema asks for one."""
+    return json.dumps(
+        {
+            "answer": answer,
+            "claims": [{"text": t, "chunk_ids": ids} for t, ids in (claims or [])],
+            "abstained": abstained,
+            "reason": reason,
+        }
     )

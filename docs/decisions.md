@@ -195,6 +195,13 @@ afterwards. Each entry says which part is unmeasured.
   interface would buffer to the same place. Streaming is additive to a blocking
   protocol if §7 wants it; the reverse is an unpicking — §5e.
 
+- **2026-09-09 — The hosted generator's provider is still unnamed, and the
+  code refuses rather than guessing.** 5a settled that there is a hosted
+  implementation behind the protocol; it did not settle whose. `make_generator`
+  raises on any kind but `local`, and the `hosted-gen` extra does not exist yet,
+  so the gap is visible instead of being closed by whichever provider was
+  nearest to hand — §5a, §5e.
+
 - **2026-09-09 — The `hosted` extra is split into `hosted-embed` and
   `hosted-gen`.** `hosted = ["openai"]` meant "hosted *embedder*"; a second
   provider makes the name inaccurate and would install an embedding dependency
@@ -276,3 +283,13 @@ Kept visible rather than edited away, because the reasoning is the point.
   commit, because it alters chunk ids and invalidates an index; that separation
   is also what let the embedding cache re-embed exactly the 14 changed chunks
   and reuse the other 443 — §2, §3.
+
+- **Reading the output found what the tests did not, a third time.** Module 5's
+  suite was green and `recall-answer` failed twice on its first real runs. A
+  read timeout is a `TimeoutError`, not a `urllib.error.URLError`, so it escaped
+  as a traceback rather than the `GenerationError` §5b requires — no test
+  reached the transport. And the model wrote passage ids into the prose the
+  instruction forbids them in, which is §5a's recorded instruction-following
+  weakness arriving on the first query. Both fixed with tests; the pattern is
+  now three modules old and is why each module ships a command that prints what
+  it did — §5, measured result.

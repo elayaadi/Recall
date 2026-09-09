@@ -59,6 +59,8 @@ uv sync --extra local                            # the local embedding model
 uv run recall-index                              # chunks -> data/index/
 uv run recall-search "why do routers drop packets"   # query the index by hand
 uv run recall-search "..." --lexical              # the BM25 baseline (SPEC.md §4a)
+uv run recall-answer "why do routers drop packets"   # retrieve, then answer with citations
+uv run recall-answer "..." --show-prompt          # the assembled prompt, no model call
 uv run pytest -q                                 # no corpus, no model, no network
 uv run pytest -q -m slow                         # the tests that need the model
 ```
@@ -94,6 +96,14 @@ docs/         decision record, corpus profile, architecture notes
 - The index records the embedder that built it and refuses to be queried by a
   different one. After changing the embedder, rebuild rather than expecting the
   mismatch to surface as bad results.
+- `recall-answer` needs a running Ollama (`ollama serve`) and the model pulled.
+  Nothing else does — the local generator adds no Python dependency, and the
+  tests use a fake generator, so `uv run pytest -q` needs neither.
+- Generation has **three** ways of not answering and they are not the same
+  thing: `no_passages` is §4b's retrieval threshold, `model_abstained` is the
+  model's own judgement, `unverified` is §5c's check failing. `failed` is a
+  fourth outcome and is not an abstention — it means the model's output could
+  not be used. Never collapse them into a boolean; §6 scores them separately.
 - Retrieval's two thresholds are **uncalibrated** and are constructor
   arguments, not constants. Module 6 sets them; the §8a corpus swap resets
   them. Never hard-code either at a call site.

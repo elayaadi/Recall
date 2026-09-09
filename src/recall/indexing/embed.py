@@ -145,7 +145,7 @@ class HostedEmbedder:
             except ImportError as exc:  # pragma: no cover - depends on install
                 raise ImportError(
                     "HostedEmbedder needs the openai package. "
-                    "Install it with: uv sync --extra hosted"
+                    "Install it with: uv sync --extra hosted-embed"
                 ) from exc
             self._client = OpenAI()
         return self._client

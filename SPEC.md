@@ -8,9 +8,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 measured against the real corpus, and module 3 with it — the index is decided,
 implemented, tested, and built against that corpus, and module 4 with it —
 retrieval is decided, implemented, tested, and run against the real index.
-Module 5 is decided and not yet implemented. Modules 6–8 are
-`decision pending`, except §8a (publication corpus), settled early because it
-constrains §6.
+Module 5 is decided, implemented and tested, and deliberately not
+measured — its numbers come from module 6. Modules 6–8 are `decision pending`,
+except §8a (publication corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -755,7 +755,7 @@ baseline observation, not as a result: §6 runs both properly.
 
 ---
 
-## 5. Generation — **decided: implementation not started**
+## 5. Generation — **done: decided, implemented, tested; not yet measured**
 
 Produce a grounded answer with citations back to source chunks, or refuse.
 
@@ -965,6 +965,63 @@ dependency for anyone who wanted a generator. It becomes `hosted-embed` and
 `hosted-gen`. Doing it now is a small edit to `pyproject.toml` and the
 documented commands; doing it after §7 publishes an install command is a
 breaking change.
+
+### Measured result
+
+The module is built and tested. **It is not measured** — every number below is
+either a property of the suite or a single observation, and none of them is a
+quality metric. Module 6 is what produces those.
+
+| | |
+|---|---|
+| tests | 214 passing, 1 deselected, 2.6s |
+| needed to run them | no model, no network, no credentials |
+| new modules | `generation/` (6 files), `eval/grounding.py` |
+| generation dependency added | none — Ollama over the standard library |
+
+**One real query, end to end, against the 457-entry index.** *why do routers
+drop packets* returned three claims, all of which passed 5c's check, citing
+`cs447 Lecture 4.pdf, slide 25` and `cs447 Lecture 5.pdf, slide 10`. The
+retrieval-abstention path also ran end to end: *explain the three way handshake*
+returned `NO_PASSAGES` at 0.574 against the 0.630 threshold and never reached
+the model, which is the figure §4 recorded for that query.
+
+**The model was `gemma3:4b`, not §5a's default.** `qwen2.5:7b-instruct` is not
+pulled on this machine and was not downloaded to produce a nicer number. So this
+is evidence that the path works, and evidence about nothing else — in particular
+it is not a data point about the local backend's quality, because it is not the
+local backend §6 will report on.
+
+**Two defects were found by running the command, and neither by the suite.**
+This is the third module in a row where that is true, which is why
+`recall-answer` exists at all.
+
+- A read timeout is a `TimeoutError` and not a `urllib.error.URLError`, so it
+  escaped as a traceback rather than the `GenerationError` 5b requires. The
+  suite was green throughout: it had no test that reached the transport.
+- The model wrote `(id: 2bf65592e5adecb9)` into the prose three times in one
+  answer, which the instruction forbids in as many words. This is 5a's recorded
+  instruction-following weakness arriving on the first query rather than in the
+  abstract, and it is now stripped deterministically — scoped to the ids in that
+  query's context, so it cannot scrub an unrelated hex string.
+
+**Two runs of the same query at temperature 0 produced slightly different claim
+text**, differing by leading discourse markers ("Specifically," and
+"Additionally,"). The citations, the claim count and the verification outcome
+were identical. Recorded because §6 depends on before-and-after comparisons
+being comparable, and this is the first evidence that the local path is not
+bit-reproducible even with sampling off. Whether that variation is large enough
+to move a metric is unmeasured.
+
+**What is deliberately absent.** No grounding rate, no abstention rates, no
+local-versus-hosted delta, no answer quality of any kind. One query is not a
+measurement, in the same sense that §4's fourteen queries were not a
+calibration, and the two thresholds this module adds — the minimum verified
+claim count and the n-gram length — ship uncalibrated for the reason §4e gives.
+
+**§5a's hosted provider is still unnamed**, so `hosted-gen` does not exist and
+`make_generator("hosted")` refuses rather than choosing one. That is the one
+part of §5e not built, and it is a decision rather than an omission.
 
 ---
 
