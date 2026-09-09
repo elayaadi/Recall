@@ -6,8 +6,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 
 **Status:** modules 1–2 done — ingestion is decided, implemented, tested, and
 measured against the real corpus, and module 3 with it — the index is decided,
-implemented, tested, and built against that corpus. Module 4 is decided and
-awaiting implementation. Modules 5–8 are `decision pending`, except §8a
+implemented, tested, and built against that corpus, and module 4 with it —
+retrieval is decided, implemented, tested, and run against the real index.
+Modules 5–8 are `decision pending`, except §8a
 (publication corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
@@ -561,7 +562,7 @@ first real evidence that §3b's cache earns its place.
 
 ---
 
-## 4. Retrieval — **decided; implementation pending**
+## 4. Retrieval — **done: decided, implemented, tested, measured**
 
 Given a query, return the most relevant chunks — or nothing.
 
@@ -695,7 +696,7 @@ problem measured. Rejected: **leaving it to §6** — consistent with not tuning
 before measuring, except that the cost is already measured; deferring it would
 depress the baseline numbers with a defect that is understood.
 
-### 4e. Implementation plan
+### 4e. Implementation
 
 - `retrieval/retriever.py` — a `Retriever` over the §3 `VectorStore`: embed,
   search, collapse, threshold, return hits with citations. Thresholds are
@@ -709,6 +710,47 @@ depress the baseline numbers with a defect that is understood.
   abstention above and below θ, collapse merging citations rather than dropping
   them, a collapsed result never losing a location, and BM25 and dense agreeing
   on a query where they should. No model, no network, no corpus.
+
+
+### Measured result
+
+`uv run recall-search` over the 457-entry index, with both thresholds at their
+uncalibrated defaults (0.63 abstain, 0.95 collapse).
+
+| | |
+|---|---|
+| queries probed | 14 — 9 answerable, 5 absent from the corpus |
+| answerable, answered | 9 / 9 |
+| absent, refused | 5 / 5 |
+| queries where collapse fired | 9 / 10 |
+| candidate results collapsed | 29 |
+| extra citations carried into the returned top-5 | 20 |
+| tests | 150 passing, 1 slow, no model or network |
+
+**§4d recovered a slot on the query that motivated it.** Before collapse, *why
+do routers drop packets* spent ranks 3 and 4 on the same "Assignment 4" from
+two decks. It now occupies one slot at 0.657 carrying both citations, and rank
+5 is a homework problem that did not previously make the list. The mechanism
+does what §4d claimed, on the case that produced the claim.
+
+**A second false failure caught by checking rather than assuming.** *Explain
+the three way handshake* was refused at 0.574 and recorded here first as a
+false abstention. It is not: `handshake` appears in **zero chunks** — the
+indexed lectures do not cover it. The abstention was correct and the label was
+wrong. This is the same error as `CIDR` in §4a, made twice in one module, which
+is the argument for checking whether a term exists before calling a low score a
+miss.
+
+**Perfect separation on 14 queries is not a calibration**, and 0.63 stays
+marked uncalibrated. Fourteen queries chosen by the author of the retriever are
+the weakest possible evidence for a threshold; §6's question set is written
+independently and is what sets it.
+
+**The BM25 baseline behaves as §4a predicted.** On keyword queries it is
+competitive — *hot potato routing* returns the right slide. On natural-language
+questions it is worse: *why do routers drop packets* returns a homework problem
+where dense returns the lecture slide defining queueing loss. Recorded as a
+baseline observation, not as a result: §6 runs both properly.
 
 ---
 

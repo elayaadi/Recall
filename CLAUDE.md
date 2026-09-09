@@ -57,6 +57,8 @@ uv run recall-ingest data/raw                    # PDFs -> data/chunks.jsonl
 uv run recall-ingest data/raw --chunker window   # the measured baseline chunker
 uv sync --extra local                            # the local embedding model
 uv run recall-index                              # chunks -> data/index/
+uv run recall-search "why do routers drop packets"   # query the index by hand
+uv run recall-search "..." --lexical              # the BM25 baseline (SPEC.md §4a)
 uv run pytest -q                                 # no corpus, no model, no network
 uv run pytest -q -m slow                         # the tests that need the model
 ```
@@ -92,3 +94,9 @@ docs/         decision record, corpus profile, architecture notes
 - The index records the embedder that built it and refuses to be queried by a
   different one. After changing the embedder, rebuild rather than expecting the
   mismatch to surface as bad results.
+- Retrieval's two thresholds are **uncalibrated** and are constructor
+  arguments, not constants. Module 6 sets them; the §8a corpus swap resets
+  them. Never hard-code either at a call site.
+- Before calling a low retrieval score a miss, check the term is in the corpus
+  at all. Twice in module 4 an absent term was nearly recorded as a retrieval
+  failure — `grep` the chunks first.

@@ -20,6 +20,7 @@ hosted = ["openai>=1.0"]
 [project.scripts]
 recall-ingest = "recall.ingestion.pipeline:main"
 recall-index = "recall.indexing.build:main"
+recall-search = "recall.retrieval.search:main"
 
 [dependency-groups]
 dev = [

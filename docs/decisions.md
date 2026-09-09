@@ -131,6 +131,12 @@ reopen it; §6 is where the thresholds get set.
   appears at — and it is why search returns locators rather than row
   offsets — §4d.
 
+- **2026-09-09 — Both retrieval thresholds are constructor arguments with
+  uncalibrated defaults, never module constants.** They are properties of the
+  embedder and the corpus, not of the system: module 6 sets them from the
+  question set and the §8a corpus swap resets them. Shipping them as constants
+  would make a placeholder indistinguishable from a measured value — §4b, §4e.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT
@@ -186,6 +192,13 @@ Kept visible rather than edited away, because the reasoning is the point.
   characters; byte-identical is 123/52. Both figures now appear in §2, and the
   distinction turned out to matter — the dedup decision in §3d turns on
   exactly which normalisation defines identity.
+
+- **An absent term was twice nearly recorded as a retrieval failure.** `CIDR`
+  scored 0.480 and *explain the three way handshake* was refused at 0.574. Both
+  looked like misses and neither was: the terms appear in the corpus zero
+  times, so the low scores were correct. Checking the corpus before calling a
+  low score a defect is now a stated convention in CLAUDE.md rather than a
+  lesson learned twice — §4a, §4 measured result.
 
 - **Reading the output found what the tests did not, a second time.**
   Inspecting the built index surfaced a module 2 defect that the chunk-level

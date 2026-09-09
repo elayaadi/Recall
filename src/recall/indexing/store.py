@@ -230,6 +230,19 @@ class NumpyStore:
             for i in top
         ]
 
+    def vectors_for(self, chunk_ids: Sequence[str]) -> np.ndarray:
+        """The stored vectors for these entries, in the order asked for.
+
+        Retrieval needs them to compare results against each other rather than
+        against the query — SPEC.md 4d collapses near-duplicate results, and
+        re-embedding text that is already embedded here would be absurd.
+        """
+        rows = {entry.chunk_id: i for i, entry in enumerate(self._entries)}
+        missing = [c for c in chunk_ids if c not in rows]
+        if missing:
+            raise KeyError(f"not in this index: {missing[0]}")
+        return self._vectors[[rows[c] for c in chunk_ids]]
+
     def save(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         np.save(directory / VECTORS_FILE, self._vectors)

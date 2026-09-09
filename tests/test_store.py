@@ -160,3 +160,24 @@ def test_entries_and_vectors_must_line_up():
             np.stack([unit(0.0), unit(1.0)]),
             embedder_name="a-2",
         )
+
+
+def test_vectors_can_be_fetched_back_for_named_entries(angled_store):
+    # Retrieval compares results against each other to collapse near-duplicates
+    # (§4d) and must not re-embed text this index already holds.
+    ids = [e.chunk_id for e in angled_store.entries[:2]]
+    vectors = angled_store.vectors_for(ids)
+    assert vectors.shape == (2, angled_store.dim)
+    assert angled_store.search(vectors[0], k=1)[0].chunk_id == ids[0]
+
+
+def test_vectors_come_back_in_the_order_asked_for(angled_store):
+    ids = [e.chunk_id for e in angled_store.entries]
+    forward = angled_store.vectors_for(ids)
+    reverse = angled_store.vectors_for(list(reversed(ids)))
+    assert np.array_equal(forward[0], reverse[-1])
+
+
+def test_asking_for_an_unknown_chunk_id_raises(angled_store):
+    with pytest.raises(KeyError, match="not in this index"):
+        angled_store.vectors_for(["nope"])
