@@ -93,6 +93,44 @@ options rejected and why, is in the linked [SPEC.md](../SPEC.md) section.
   that would fix it is the kind of knob module 6 should measure rather than one
   to guess at now — §3, measured result.
 
+## Retrieval — module 4
+
+Settled on a probe of eight to ten queries against the real 457-entry index —
+enough to rule options out, not enough to tune one. Each entry names what would
+reopen it; §6 is where the thresholds get set.
+
+- **2026-09-09 — Dense-only retrieval, with BM25 built as a measured baseline.**
+  The case for hybrid was that dense embeddings fail on exact tokens, and the
+  probe refuted it: `rdt_send` scores 0.759 onto the right slides and "RFC 2616"
+  retrieves one of the two chunks containing that string. `CIDR` scores low
+  because the term appears in the corpus **zero times** — correct behaviour, and
+  nearly recorded as evidence of failure before it was checked. BM25 therefore
+  ships as a §6 baseline rather than a second production path, the same shape as
+  the window chunker in §2b — §4a.
+
+- **2026-09-09 — Abstention by an absolute threshold on the top-1 score,
+  calibrated in module 6.** Answerable queries land at or above 0.666 and absent
+  ones at or below 0.594, an empty gap of 0.072. A margin rule was ruled out by
+  measurement rather than taste: margins run 0.000–0.039 and do not track
+  answerability, with `rdt_send` (answerable) and "capital of Peru" (absent)
+  both at 0.000. θ ships uncalibrated and is a config value, not a constant,
+  because it is a property of the embedder and dies at any embedder or corpus
+  change — §4b.
+
+- **2026-09-09 — No reranker in v1, with a measured trigger.** Adopt one when
+  module 6 shows recall@20 materially above recall@5 — that gap is exactly the
+  headroom a reranker recovers, and its absence would mean the problem is
+  upstream in chunking or embedding instead. Deferral with a condition rather
+  than avoidance — §4c.
+
+- **2026-09-09 — Near-duplicate results are collapsed and their citations
+  merged.** Promoted out of §3d's deferral because the cost stopped being
+  hypothetical: 3 of 10 realistic queries return a near-duplicate pair inside
+  top-5, and the index holds 58 pairs above 0.95 covering 97 of 457 entries.
+  This is §3d's rule applied one level out — one passage, every location it
+  appears at — and it is why search returns locators rather than row
+  offsets — §4d.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT

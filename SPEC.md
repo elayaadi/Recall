@@ -6,9 +6,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 
 **Status:** modules 1–2 done — ingestion is decided, implemented, tested, and
 measured against the real corpus, and module 3 with it — the index is decided,
-implemented, tested, and built against that corpus. Modules 4–8 are `decision
-pending`, except §8a (publication corpus), settled early because it constrains
-§6.
+implemented, tested, and built against that corpus. Module 4 is decided and
+awaiting implementation. Modules 5–8 are `decision pending`, except §8a
+(publication corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -480,8 +480,9 @@ retrieved. Rejected: **deduplicating on `text`** — 12 chunks, which leaves the
 problem essentially unaddressed. Rejected: **normalised matching** — 16 further
 chunks collapsed, but it merges bodies differing in punctuation and case, and
 §2's own defects showed those can be a real difference rather than noise.
-Near-duplicate deduplication by embedding similarity stays deferred until §6
-measures whether exact matching leaves a gap.
+Near-duplicate deduplication by embedding similarity is **not** handled here.
+It was deferred to §6 and then settled earlier than that, in §4d, once the
+measured result below turned the cost from a possibility into a number.
 
 ### 3e. Implementation
 
@@ -560,20 +561,154 @@ first real evidence that §3b's cache earns its place.
 
 ---
 
-## 4. Retrieval — **decision pending**
+## 4. Retrieval — **decided; implementation pending**
 
 Given a query, return the most relevant chunks — or nothing.
 
-Open decisions:
+**These are starting positions, and each one records what would change it.** The
+evidence below is a probe of eight to ten queries against the real 457-entry
+index: enough to rule options out, not enough to tune one. Every decision names
+the measurement that would reopen it, so advancing the design later is a matter
+of evidence arriving rather than of reconsidering taste. §6 is where the
+thresholds get set; until then they ship marked uncalibrated.
 
-- **4a. Dense-only vs. hybrid** (dense + keyword/BM25), and if hybrid, how
-  scores are combined.
-- **4b. Abstention.** How the system decides it has *not* found an answer:
-  score threshold, margin, a reranker, or an LLM check. Calibrated against the
-  eval set, not guessed.
-- **4c. Reranking** — whether a second-stage reranker earns its cost.
+### The probe
 
-Options and reasoning: _to be filled in._
+Eight queries, run against `data/index/` as built in §3.
+
+| Query | Kind | top-1 | margin | in corpus |
+|---|---|---|---|---|
+| `rdt_send` | exact token | 0.759 | 0.000 | 11 chunks |
+| how does DNS resolve a hostname | answerable | 0.709 | 0.007 | yes |
+| why do routers drop packets | answerable | 0.688 | 0.002 | yes |
+| what does RFC 2616 define | exact token | 0.666 | 0.039 | 2 chunks |
+| explain quantum error correction thresholds | absent | 0.594 | 0.011 | no |
+| how do I bake sourdough bread | absent | 0.482 | 0.022 | no |
+| CIDR | absent | 0.480 | 0.009 | **0 chunks** |
+| what is the capital of Peru | absent | 0.406 | 0.000 | no |
+
+Three things follow, and they decide most of what is below. Answerable queries
+land at or above 0.666 and absent ones at or below 0.594, an empty gap of
+**0.072**. Margins run 0.000–0.039 and do not track answerability at all.
+And a separate run over ten realistic queries found **3 of them returning a
+near-duplicate pair inside top-5**.
+
+### 4a. Dense-only, with BM25 kept as a measured baseline — decided
+
+Retrieval is the dense path already built in §3: embed the query with the bge
+prefix, exhaustive cosine over 457 entries, top-k. A lexical BM25 retriever is
+built alongside it as a **baseline that module 6 measures**, not as a second
+production path — the same shape as §2b, where uniform windowing stays in the
+repo so the structural chunker's advantage is a number rather than a claim.
+
+*This reverses the argument that started the section.* The case for hybrid was
+going to be that dense embeddings fail on exact tokens, of which a networking
+course has many. The probe does not support it. `rdt_send` scores 0.759 and
+lands on the reliable-data-transfer slides; "RFC 2616" retrieves one of the
+exactly two chunks containing that string. `CIDR` scores 0.480 because **the
+term appears in the corpus zero times** — correct behaviour, not a miss, and it
+was nearly recorded as evidence of failure before it was checked.
+
+That leaves hybrid retrieval a solution without a demonstrated problem here.
+Building it as a baseline keeps the question open at the cost of a retriever
+that is roughly 40 lines over the sidecar the index already carries.
+
+Rejected for now: **RRF fusion** (rank-based, needs no score normalisation, and
+the standard choice — but adopted on reputation rather than on evidence from
+this corpus). Rejected: **weighted score fusion** — one more knob to calibrate,
+and it needs cross-query score normalisation, which is the fragile part.
+
+**Reopen when** module 6 shows the BM25 baseline beating or complementing dense
+on any question class, or when a corpus lands whose vocabulary is less well
+covered by the embedding model than this one.
+
+### 4b. Abstention: an absolute threshold on the top-1 score — decided
+
+The system abstains when the best result scores below θ. §0 lists abstaining
+rather than answering as a v1 success criterion, so this path is not optional.
+
+**θ ships uncalibrated and is set in §6 from the question set**, never guessed
+here. The probe supports the mechanism and cannot supply the number: eight
+queries separate cleanly with a 0.072 gap, and eight queries are not a
+calibration.
+
+Rejected on measurement: **a margin rule** (abstain when top-1 is not clearly
+ahead of top-2). It would have had the advantage of being embedder-independent,
+and the data kills it — margins run 0.000 to 0.039 with no relation to
+answerability. `rdt_send`, which is answerable and correctly retrieved, has a
+margin of 0.000; so does "what is the capital of Peru". Rejected: **an LLM
+relevance check** — the most accurate option and robust to an embedder swap,
+but it moves an evaluable retrieval decision into module 5, where §6 cannot
+score abstention in isolation, and it adds latency and cost to queries that
+clearly hit.
+
+The known weakness is that θ is a property of the embedder, not of the system:
+the hosted embedder in §3a produces different score geometry, so swapping it
+invalidates θ. The threshold is configuration, never a constant, and §6
+recalibrates after any embedder or corpus change — including the §8a corpus
+swap.
+
+### 4c. No reranker in v1, with a trigger that would add one — decided
+
+A cross-encoder scores a query and a candidate jointly rather than comparing
+two independently produced vectors, and it is usually the largest single
+quality lever in a RAG pipeline. It is not adopted here, and the reason is that
+nothing yet measures whether ordering is this system's weak point.
+
+**The trigger is written down rather than left to judgement: adopt a reranker
+when §6 shows recall@20 materially above recall@5.** That gap is exactly the
+headroom a reranker can recover — if the right passage is being retrieved but
+ranked below the cut, reranking helps; if it is not retrieved at all, reranking
+cannot help and the problem is upstream in chunking or embedding.
+
+Rejected for now: **a local cross-encoder** (`bge-reranker-base` over top-20) —
+no credentials needed and it would also blunt the near-duplicate problem by
+re-scoring the whole candidate set, but it is a second model of roughly 1.1 GB
+and 1–2 seconds of CPU per query, adopted before any evidence it is needed.
+Rejected: **an LLM reranker** — strongest ordering, but it needs credentials,
+which breaks the clone-and-re-run promise §3a protects, and it is
+non-deterministic, which adds noise to precisely the before/after comparisons
+§6 exists to make.
+
+### 4d. Near-duplicate results are collapsed, carrying their citations — decided
+
+§3d deduplicates on the byte-identical raw body and deferred anything closer to
+module 6. §3's measured result turned that deferral into a known cost, so it is
+settled here instead.
+
+The index holds 10 entry pairs above 0.99 cosine, 17 above 0.98 and 58 above
+0.95, covering 97 of 457 entries — the `Week N On-line` decks re-releasing
+`Lecture N` material with small extraction differences that exact matching
+cannot see. Measured at the query, **3 of 10 realistic queries return a
+near-duplicate pair inside top-5**, spending two of five slots on one passage.
+
+The ranked list is walked in order; a result too similar to one already kept is
+dropped and its citation attached to the survivor. This is §3d's rule applied
+one level out — one passage, every location it appears at — and it is the
+reason the store already returns locators rather than row offsets. The
+similarity threshold is calibrated in §6 alongside θ.
+
+Rejected: **Maximal Marginal Relevance** — solves duplication and topical
+redundancy together, but its λ deliberately demotes relevant results, which
+works against the recall metric §6 will report, and it is heavier than the
+problem measured. Rejected: **leaving it to §6** — consistent with not tuning
+before measuring, except that the cost is already measured; deferring it would
+depress the baseline numbers with a defect that is understood.
+
+### 4e. Implementation plan
+
+- `retrieval/retriever.py` — a `Retriever` over the §3 `VectorStore`: embed,
+  search, collapse, threshold, return hits with citations. Thresholds are
+  constructor arguments with uncalibrated defaults, never module constants.
+- `retrieval/lexical.py` — the BM25 baseline over the same sidecar, behind the
+  same interface, so §6 runs both from one harness.
+- `retrieval/collapse.py` — §4d's list walk, taking vectors already in memory.
+- A `recall-search` command mirroring `recall-ingest` and `recall-index`, so
+  retrieval can be exercised by hand the way §2 and §3 were.
+- Tests on the fake embedder with hand-constructed vectors at known angles:
+  abstention above and below θ, collapse merging citations rather than dropping
+  them, a collapsed result never losing a location, and BM25 and dense agreeing
+  on a query where they should. No model, no network, no corpus.
 
 ---
 
