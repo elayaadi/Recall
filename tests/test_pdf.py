@@ -68,3 +68,55 @@ def test_content_spans_drop_the_footer_split_across_sizes(deck_path):
     document = load(deck_path)
     spans = document.pages[1].content_spans(find_boilerplate(document))
     assert all("Example Course" not in s.text for s in spans)
+
+
+def test_unmapped_glyph_markers_become_spaces():
+    # (cid:561) stands in for a space inside a run pdfplumber reads as one
+    # word, so removing it outright would weld the words together instead.
+    from recall.ingestion.pdf import strip_cid_glyphs
+
+    assert (
+        strip_cid_glyphs("Example(cid:561)1:(cid:561)Peering(cid:561)and(cid:561)pricing")
+        == "Example 1: Peering and pricing"
+    )
+
+
+def test_a_glyph_marker_standing_alone_leaves_nothing_behind():
+    from recall.ingestion.pdf import strip_cid_glyphs
+
+    assert strip_cid_glyphs("(cid:12)") == ""
+    assert strip_cid_glyphs("CNN (cid:111) eyeballs") == "CNN eyeballs"
+
+
+def test_ordinary_text_and_real_parentheses_are_untouched():
+    from recall.ingestion.pdf import strip_cid_glyphs
+
+    assert strip_cid_glyphs("queue (aka buffer) preceding a link") == (
+        "queue (aka buffer) preceding a link"
+    )
+    assert strip_cid_glyphs("RFC (cid) 2616") == "RFC (cid) 2616"
+
+
+def test_a_word_that_is_only_a_glyph_marker_is_dropped():
+    from recall.ingestion.pdf import _clean_words
+
+    words = [
+        {"text": "So", "size": 12.0, "top": 1.0, "x0": 0.0},
+        {"text": "(cid:12)", "size": 12.0, "top": 1.0, "x0": 10.0},
+        {"text": "both", "size": 12.0, "top": 1.0, "x0": 20.0},
+    ]
+    assert [w["text"] for w in _clean_words(words)] == ["So", "both"]
+
+
+def test_cleaning_a_glyph_marker_restores_the_title_body_match():
+    """The reason this is cleaned at load rather than at chunk time.
+
+    An uncleaned marker leaves the body copy of a title different from the
+    title, so the chunkers' title-stripping stops matching and both survive.
+    """
+    from recall.ingestion.pdf import _clean_words
+    from recall.ingestion.structure import comparable
+
+    title = "Example 1: Peering and pricing"
+    body = _clean_words([{"text": "Example(cid:561)1:(cid:561)Peering(cid:561)and(cid:561)pricing"}])
+    assert comparable(body[0]["text"]) == comparable(title)

@@ -151,9 +151,12 @@ Kept visible rather than edited away, because the reasoning is the point.
 
 - **Reading the output found what the tests did not, a second time.**
   Inspecting the built index surfaced a module 2 defect that the chunk-level
-  inspection had passed over: 14 chunks carry `(cid:N)` sequences from glyphs
+  inspection had passed over: 14 chunks carried `(cid:N)` sequences from glyphs
   the PDF font maps to no Unicode code point, which corrupt embedded text and
-  defeat the title-stripping fix. Recorded in §2's known limitations and §3's
-  measured result, and left for a module 2 change rather than folded into the
-  indexing commit, since it alters chunk ids and would invalidate the index the
-  numbers were measured on.
+  defeated the title-stripping fix, leaving both copies of a title in the
+  chunk. Now fixed at load time — the markers become spaces, which is correct
+  both for the 66 occurrences standing in for a space inside a word and for the
+  2 dingbats carrying no text. Kept as a separate change from the indexing
+  commit, because it alters chunk ids and invalidates an index; that separation
+  is also what let the embedding cache re-embed exactly the 14 changed chunks
+  and reuse the other 443 — §2, §3.

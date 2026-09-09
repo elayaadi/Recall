@@ -29,6 +29,15 @@ PAGE_FOOTER_RE = re.compile(r"^\s*page\s+\d+\s*(of\s+\d+)?\s*$", re.I)
 BARE_NUMBER_RE = re.compile(r"^\s*(\d{1,4})\s*$")
 TRAILING_NUMBER_RE = re.compile(r"^(.*\S)\s+(\d{1,4})$")
 
+# A glyph the embedded font maps to no Unicode code point. pdfplumber surfaces
+# it literally as "(cid:N)", and it lands in chunk text and then in embeddings.
+# Measured over this corpus: 66 of 68 occurrences are (cid:561) standing in for
+# a space *inside* a run pdfplumber reads as one word
+# ("Example(cid:561)1:(cid:561)Peering"); the other two are dingbats carrying no
+# recoverable text. A space is right for both — it restores the word boundary in
+# the first case and leaves nothing behind in the second.
+CID_RE = re.compile(r"\(cid:\d+\)")
+
 _LINE_TOLERANCE = 2.5  # points; words within this vertical distance are one line
 
 
@@ -185,6 +194,28 @@ def _span(words: list[dict]) -> Span:
     )
 
 
+def strip_cid_glyphs(text: str) -> str:
+    """Replace unmapped-glyph markers with spaces and collapse the whitespace."""
+    return " ".join(CID_RE.sub(" ", text).split())
+
+
+def _clean_words(words: list[dict]) -> list[dict]:
+    """Drop the glyph markers before anything downstream can see them.
+
+    Cleaning here rather than at chunk time means lines, spans and the title
+    heuristic all work on the same repaired text. That matters beyond
+    tidiness: an uncleaned marker leaves the body copy of a title different
+    from the title itself, so the title-stripping in the chunkers stops
+    matching and both copies survive into the chunk.
+    """
+    cleaned: list[dict] = []
+    for word in words:
+        text = strip_cid_glyphs(word["text"])
+        if text:
+            cleaned.append({**word, "text": text})
+    return cleaned
+
+
 def _drop_page_number(line: str, index: int) -> str | None:
     """Remove the page's own number from a line, or the line if that is all it is."""
     if (m := BARE_NUMBER_RE.match(line)) and int(m.group(1)) == index:
@@ -205,7 +236,7 @@ def load(path: str | Path) -> Document:
     with pdfplumber.open(path) as pdf:
         for index, page in enumerate(pdf.pages, start=1):
             words = page.extract_words(extra_attrs=["size"], use_text_flow=False)
-            lines, spans = _words_to_lines(words)
+            lines, spans = _words_to_lines(_clean_words(words))
             lines = tuple(
                 cleaned
                 for line in lines

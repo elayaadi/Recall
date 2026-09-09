@@ -178,7 +178,7 @@ there are baseline numbers.
 | | |
 |---|---|
 | chunks (structural) | 528 |
-| words | 35,797 |
+| words | 35,823 |
 | mean / median words per chunk | 68 / 57 |
 | shortest / longest chunk | 1 / 742 words |
 | multi-slide merged chunks | 45 |
@@ -219,6 +219,22 @@ This is the argument for writing chunks to JSONL rather than passing them
 straight to the indexer: all three were obvious on sight and none would have
 failed a test written before the corpus was read.
 
+**A fifth defect, found by reading the index rather than the chunks.**
+14 chunks (2.7%) across 3 files carried `(cid:N)` sequences — glyphs the
+embedded font maps to no Unicode code point, which pdfplumber surfaces
+literally. 66 of the 68 occurrences were `(cid:561)` standing in for a space
+*inside* a run pdfplumber reads as a single word
+(`Example(cid:561)1:(cid:561)Peering`); the other two were dingbats carrying no
+recoverable text. Both cases are correct as a space, so they are replaced with
+one at load time, before lines, spans or the title heuristic see them.
+
+The second-order effect is why it is cleaned at load rather than at chunk time:
+an uncorrected marker left the body copy of a title textually different from
+the title, so the title-stripping above stopped matching and both survived —
+`The(cid:561)Internet(cid:561)hierarchy The Internet hierarchy*`. Fixing the
+glyphs fixed that with it. Re-ingesting changed 14 of 528 chunk ids and added
+26 words; every other figure in this section is unchanged.
+
 **Duplication across files — settled in §3d.** The `Week N On-line` decks
 re-release material from the `Lecture N` decks, so **123 of 528 chunks (23%)
 have byte-identical body text to another chunk**, across 52 distinct bodies;
@@ -238,16 +254,17 @@ measures whether it is needed.
 as low-value chunks that mention many topics and answer none, as do divider
 slides whose text is just a section name. 76 chunks (14.4%) are under 15 words.
 No minimum chunk size is enforced: the threshold is exactly the kind of knob
-module 6 should measure rather than one to guess at now. **14 chunks (2.7%)
-across 3 files carry `(cid:N)` sequences** — glyphs whose embedded font maps to
-no Unicode code point, which pdfplumber surfaces literally; 66 of the 68
-occurrences are `(cid:561)` standing in for a space. Found while inspecting the
-module 3 index, not by the chunk-level pass, and recorded in §3's measured
-result. They corrupt embedded text and defeat the title-stripping fix above,
-because the body copy of a title no longer matches the title itself. 25 chunks contain the instructor's email address,
-which matters only for the private development corpus (see §8a). Syllabus tables flatten to a row-ambiguous stream. A same-title
-run merged across a text-less page cites non-contiguous pages ("slides 2, 4"),
-which is correct but unusual to read.
+module 6 should measure rather than one to guess at now. **Shadow-rendered
+body text can survive inside a chunk:** §2b's shadow fix covers titles, where
+both copies sit at the title font size, but a duplicated copy at body size is
+indistinguishable from genuinely repeated content by that rule, so a handful
+of Lecture 4 slides read "By many accounts, the Internet looks like By many
+accounts, the Internet looks like a a hierarchy". Left as a limitation rather
+than guessed at — a rule collapsing repeated body phrases would collapse real
+ones too. 25 chunks contain the instructor's email address, which matters only
+for the private development corpus (see §8a). Syllabus tables flatten to a
+row-ambiguous stream. A same-title run merged across a text-less page cites
+non-contiguous pages ("slides 2, 4"), which is correct but unusual to read.
 
 ### 2c. Chunk schema and citation anchoring — decided: location + snippet
 
@@ -500,9 +517,10 @@ measures whether exact matching leaves a gap.
 | embedder | `bge-base-en-v1.5`, 768 dimensions |
 | `vectors.npy` | 1.40 MB |
 | `index.json` (entries and locators) | 0.61 MB |
-| embedding cache | 1.43 MB |
+| embedding cache | 1.47 MB |
 | first build, CPU | 34.9s |
-| rebuild from cache | 0.0s |
+| rebuild, nothing changed | 0.0s (457 cache hits) |
+| rebuild after the §2 glyph fix | 24.6s (443 hits, 14 re-embedded) |
 | entries under 15 words | 54 (11.8%) |
 | entries standing for more than one location | 52 |
 
@@ -533,9 +551,12 @@ they also defeat §2's title-stripping fix — the body copy of the title no
 longer matches the title itself, so both survive into the chunk
 (`Example 1: Peering and pricing * Example(cid:561)1:(cid:561)Peering…`).
 
-Not fixed in this module. It is a chunker change, so it would alter chunk ids
-and invalidate the index measured above; it belongs to module 2 and is recorded
-in §2's known limitations rather than folded in quietly here.
+Fixed in module 2 immediately after this module landed, as its own change
+rather than folded in here: it alters chunk ids and invalidates an index, so
+the two are separable and were kept separate. §2 records the fix and its
+second-order effect on title stripping. Re-ingesting changed 14 of 528 chunks;
+the cache re-embedded exactly those 14 and reused the other 443, which is the
+first real evidence that §3b's cache earns its place.
 
 ---
 
