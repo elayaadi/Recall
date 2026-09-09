@@ -47,9 +47,10 @@ def _slide(
 
 
 def make_deck(path: Path) -> Path:
-    """9 slides: a 3-slide same-title run (one marked cont.), a non-adjacent
-    repeat of that title, a page with no text layer at all, and a title-only
-    divider slide whose body is a diagram."""
+    """10 slides: a 3-slide same-title run (one marked cont.), a non-adjacent
+    repeat of that title, a page with no text layer at all, a title-only
+    divider slide, and a slide whose text is all one size and so has no
+    title at all."""
     pdf = canvas.Canvas(str(path), pagesize=landscape(letter))
     _slide(pdf, "Introduction", ["Course overview and goals", "What we will build"], 1)
     _slide(pdf, "Web caching", ["A cache stores responses near the client"], 2)
@@ -60,6 +61,10 @@ def make_deck(path: Path) -> Path:
     _slide(pdf, "Web caching", ["Revisited later in the deck, deliberately"], 7)
     _slide(pdf, "Summary", ["Caching and routing both trade cost for latency"], 8)
     _slide(pdf, "Topology diagram", [], 9)  # title over a diagram: nothing to retrieve
+    # No title: every line at one font size, so nothing is a heading.
+    _slide(pdf, None, ["Every line on this slide is the same size",
+                       "so none of them is a title",
+                       "and all of them are body text"], 10)
     pdf.save()
     return path
 

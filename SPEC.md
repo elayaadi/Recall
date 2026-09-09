@@ -55,10 +55,8 @@ This is the private development corpus; what ships with the public repo is
 decided in §8a.
 29 PDFs from one course: 22 slide decks, 6 problem sheets, 1 syllabus; 578
 pages, ~43k words, English. **No scans**, so OCR being out of scope costs
-nothing. 32 of 578 pages produce no chunk — a few with no text layer, the rest
-title-only divider slides over a diagram — and every one is reported by page
-number at ingest rather than indexed as a chunk that matches a query and then
-answers nothing.
+nothing. 1 of 578 pages produces no chunk, and it is reported by page number at
+ingest rather than passed over silently.
 
 ### 2a. Parsing libraries — decided
 
@@ -174,18 +172,18 @@ there are baseline numbers.
 
 | | |
 |---|---|
-| chunks (structural) | 494 |
-| words | 35,648 |
-| mean / median words per chunk | 72 / 61 |
+| chunks (structural) | 528 |
+| words | 35,797 |
+| mean / median words per chunk | 68 / 57 |
 | shortest / longest chunk | 1 / 742 words |
-| multi-slide merged chunks | 51 |
-| pages producing no chunk | 32, each reported by page number |
+| multi-slide merged chunks | 45 |
+| pages producing no chunk | 1, reported by page number |
 
 All 29 files were routed to the right chunker by structural signal alone, with
 no filename fallback. Problem-sheet chunk counts match the numbering found
 independently during profiling (6, 8, 5, 3, 7, 4).
 
-**Three defects found by reading the chunks, not by the tests.** Inspecting the
+**Four defects found by reading the chunks, not by the tests.** Inspecting the
 shortest chunks after the first run (`scripts/inspect_chunks.py --shortest`)
 found each of these, and each is now fixed with a regression test:
 
@@ -200,19 +198,40 @@ found each of these, and each is now fixed with a regression test:
 - The title was not always stripped from its own chunk body, because the same
   characters render differently in the two places (`Cookies: keeping state` in
   the title, `Cookies: keeping " state "` in the body). Comparison is now
-  punctuation- and case-insensitive; 4 chunks still open with their own title,
-  down from roughly 29.
+  punctuation- and case-insensitive.
+- **The worst one: pages with no distinct title.** Many slides put all their
+  text at a single font size, so nothing on them is a heading. Taking the
+  largest span as the title anyway moved the *entire slide* into the title field
+  and then stripped it out of the body — Week 3 slide 12 has nine lines of real
+  content and was reduced to a 1-word chunk. The content was not merely
+  mislabelled, it was deleted from `raw_text`, which is the field the eval
+  harness matches gold snippets against and the generator quotes from. A page
+  now has a title only when its content spans carry more than one font size.
+  This alone changed 494 chunks to 528 and cut pages producing no chunk from 32
+  to 1.
 
 This is the argument for writing chunks to JSONL rather than passing them
 straight to the indexer: all three were obvious on sight and none would have
 failed a test written before the corpus was read.
 
+**Duplication across files — open, to be settled in §3/§4.** The `Week N
+On-line` decks re-release material from the `Lecture N` decks, so **139 of 528
+chunks (26%) have byte-identical body text to another chunk**, across 59
+distinct bodies. A further 134 chunks share a title with a chunk in another file
+but carry genuinely different text, which is ordinary and needs no handling.
+Exact duplicates do need handling: they consume two slots in a top-k retrieval
+for one passage, and a gold label anchored to one file's copy scores as a miss
+when the other copy is retrieved. The likely answer is exact-hash deduplication
+at index time, keeping one chunk that carries both locations as citations, with
+near-duplicate handling deferred until measured.
+
 **Known limitations, recorded rather than hidden.** Roman-numeral sub-parts
 (`i.`, `ii.`) inside a problem are not captured in `parts` metadata; only
-`a)`–`h)` are. Deck cover slides (21 of them) and recurring agenda/roadmap
-slides survive as low-value chunks that mention many topics and answer none;
-they are left in deliberately so module 6 can measure whether they hurt, rather
-than removed on a hunch. 25 chunks contain the instructor's email address,
+`a)`–`h)` are. Deck cover slides and recurring agenda/roadmap slides survive
+as low-value chunks that mention many topics and answer none, as do divider
+slides whose text is just a section name. 76 chunks (14.4%) are under 15 words.
+No minimum chunk size is enforced: the threshold is exactly the kind of knob
+module 6 should measure rather than one to guess at now. 25 chunks contain the instructor's email address,
 which matters only for the private development corpus (see §8a). Syllabus tables flatten to a row-ambiguous stream. A same-title
 run merged across a text-less page cites non-contiguous pages ("slides 2, 4"),
 which is correct but unusual to read.

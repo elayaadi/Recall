@@ -7,11 +7,11 @@ from recall.ingestion.pipeline import ingest_directory, ingest_file, read_jsonl,
 def test_ingest_reports_what_it_did_and_what_it_skipped(deck_path):
     chunks, report = ingest_file(deck_path)
     assert report.doc_type == DECK
-    assert report.pages == 9
+    assert report.pages == 10
     assert report.empty_pages == (5,)
-    # Page 9 has a title but no body, so it is reported rather than indexed.
-    assert report.uncovered_pages == (5, 9)
-    assert report.chunks == len(chunks) == 5
+    # Only the page with no text layer at all yields nothing.
+    assert report.uncovered_pages == (5,)
+    assert report.chunks == len(chunks) == 7
     assert report.boilerplate_lines == 1
 
 

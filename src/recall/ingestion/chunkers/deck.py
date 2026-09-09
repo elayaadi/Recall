@@ -8,37 +8,24 @@ spanning intervening material would have no honest citation. See SPEC.md 2b.
 
 from __future__ import annotations
 
-import re
-
 from ..boilerplate import strip_boilerplate
 from ..models import DECK, STRUCTURAL, Chunk, Locator
 from ..pdf import Document, Page
-from ..structure import normalise_title
+from ..structure import comparable, normalise_title
 
 DEFAULT_MAX_WORDS = 1200  # guard only; the longest real run is 9 slides, ~800 words
 
-_ALNUM_RE = re.compile(r"[^a-z0-9]+")
-
-
-def _comparable(text: str) -> str:
-    """Punctuation- and case-insensitive form, for matching a body line against
-    the title. PDFs render the same characters differently in the two places —
-    a title reading `Cookies: keeping state` appears in the body as
-    `Cookies: keeping " state "` — so an exact comparison leaves the title
-    duplicated inside its own chunk."""
-    return _ALNUM_RE.sub("", text.lower())
-
 
 def _title_and_body(page: Page, boilerplate: frozenset[str]) -> tuple[str | None, list[str]]:
-    title = page.largest_span_text(exclude=boilerplate)
+    title = page.title(exclude=boilerplate)
     lines = strip_boilerplate(page.lines, boilerplate)
     if not title:
         return None, lines
-    comparable_title = _comparable(title)
+    comparable_title = comparable(title)
     body = [
         line
         for line in lines
-        if not (_comparable(line) and _comparable(line) in comparable_title)
+        if not (comparable(line) and comparable(line) in comparable_title)
     ]
     return title, body
 

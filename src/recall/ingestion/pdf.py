@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pdfplumber
 
+from .structure import comparable
+
 # Footers like "Page 1 of 2" differ per page, so repeated-line detection cannot
 # catch them, but they are boilerplate all the same.
 PAGE_FOOTER_RE = re.compile(r"^\s*page\s+\d+\s*(of\s+\d+)?\s*$", re.I)
@@ -65,14 +67,35 @@ class Page:
     def n_words(self) -> int:
         return len(self.text.split())
 
-    def largest_span_text(self, exclude: frozenset[str] = frozenset()) -> str | None:
-        """The page's largest-font text, joined in reading order.
+    def content_spans(self, exclude: frozenset[str] = frozenset()) -> list[Span]:
+        """Spans carrying content: no boilerplate, no page number.
 
-        A title is often split across sibling spans at the same size, so every
-        span at the maximum size is joined rather than just the first.
+        Lines are cleaned when the page is loaded, but spans are not, and the
+        footer is often split across spans ("(c)" at one size, the rest at
+        another). Matching on the punctuation-insensitive form catches both
+        halves.
         """
-        spans = [s for s in self.spans if s.text.strip() and s.text.strip() not in exclude]
-        if not spans:
+        skip = {comparable(line) for line in exclude}
+        out: list[Span] = []
+        for span in self.spans:
+            text = _drop_page_number(span.text.strip(), self.number)
+            if not text or not (key := comparable(text)):
+                continue
+            if any(key in boiler or boiler in key for boiler in skip if boiler):
+                continue
+            out.append(Span(text, span.size, span.top, span.x0))
+        return out
+
+    def title(self, exclude: frozenset[str] = frozenset()) -> str | None:
+        """The slide title: the largest-font text, when the page has one.
+
+        A page whose content is all at a single font size has no title — every
+        line is body. Treating the largest span as a title there would move the
+        whole slide into the title field and strip it out of the body, which is
+        exactly what it did before this check existed.
+        """
+        spans = self.content_spans(exclude)
+        if len({s.size for s in spans}) < 2:
             return None
         largest = max(s.size for s in spans)
         winners = sorted(

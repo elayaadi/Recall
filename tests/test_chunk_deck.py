@@ -28,7 +28,9 @@ def test_the_same_title_recurring_non_adjacently_stays_separate(deck_path):
 
 def test_a_title_change_closes_the_chunk(deck_path):
     titles = [c.locator.title for c in _chunks(deck_path)]
-    assert titles == ["Introduction", "Web caching", "Routing", "Web caching", "Summary"]
+    assert titles == [
+        "Introduction", "Web caching", "Routing", "Web caching", "Summary", None, None
+    ]
 
 
 def test_text_less_pages_produce_no_chunk(deck_path):
@@ -51,9 +53,13 @@ def test_the_size_cap_splits_an_over_long_run(deck_path):
     assert len(capped) > 2  # the 3-slide run no longer fits in one chunk
 
 
-def test_a_title_only_divider_slide_produces_no_chunk(deck_path):
-    # Slide 9 is a title over a diagram: it would match a query and answer nothing.
-    assert all(9 not in c.locator.pages for c in _chunks(deck_path))
+def test_a_slide_with_no_distinguishable_title_keeps_all_its_text_as_body(deck_path):
+    # Slide 10 is all one font size. Its text must survive in raw_text, which is
+    # what the eval harness matches gold snippets against.
+    chunk = next(c for c in _chunks(deck_path) if c.locator.pages == (10,))
+    assert chunk.locator.title is None
+    assert "so none of them is a title" in chunk.raw_text
+    assert chunk.n_words > 10
 
 
 def test_bare_slide_numbers_do_not_reach_chunk_text(deck_path):

@@ -16,6 +16,14 @@ _TRAILING_INDEX_RE = re.compile(r"\s*[-–—]?\s*(\d+|[IVX]+)\s*$")
 _NUMBERED_RE = re.compile(r"^\s{0,4}(\d{1,2})\s*[\.\)]\s+\S")
 _SUBPART_RE = re.compile(r"^\s{0,6}([a-h])\s*[\.\)]\s+\S")
 _WHITESPACE_RE = re.compile(r"\s+")
+_ALNUM_RE = re.compile(r"[^a-z0-9]+")
+
+
+def comparable(text: str) -> str:
+    """Punctuation- and case-insensitive form, for matching text the PDF renders
+    differently in two places — a title reading `Cookies: keeping state` appears
+    in the body as `Cookies: keeping " state "`."""
+    return _ALNUM_RE.sub("", text.lower())
 
 
 def normalise_title(title: str | None) -> str:
