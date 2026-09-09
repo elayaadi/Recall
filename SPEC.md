@@ -5,8 +5,9 @@ study notes and course materials, with citations back to the source, and a
 hand-built evaluation harness that proves retrieval quality with real numbers.
 
 **Status:** modules 1–2 done — ingestion is decided, implemented, tested, and
-measured against the real corpus. Modules 3–8 are `decision pending`, except
-§8a (publication corpus), settled early because it constrains §6.
+measured against the real corpus. Module 3 is decided and awaiting
+implementation. Modules 4–8 are `decision pending`, except §8a (publication
+corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -217,16 +218,18 @@ This is the argument for writing chunks to JSONL rather than passing them
 straight to the indexer: all three were obvious on sight and none would have
 failed a test written before the corpus was read.
 
-**Duplication across files — open, to be settled in §3/§4.** The `Week N
-On-line` decks re-release material from the `Lecture N` decks, so **139 of 528
-chunks (26%) have byte-identical body text to another chunk**, across 59
-distinct bodies. A further 134 chunks share a title with a chunk in another file
-but carry genuinely different text, which is ordinary and needs no handling.
-Exact duplicates do need handling: they consume two slots in a top-k retrieval
-for one passage, and a gold label anchored to one file's copy scores as a miss
-when the other copy is retrieved. The likely answer is exact-hash deduplication
-at index time, keeping one chunk that carries both locations as citations, with
-near-duplicate handling deferred until measured.
+**Duplication across files — settled in §3d.** The `Week N On-line` decks
+re-release material from the `Lecture N` decks, so **123 of 528 chunks (23%)
+have byte-identical body text to another chunk**, across 52 distinct bodies;
+normalising to alphanumeric characters only raises that to 139 across 59, which
+is the figure this section first reported as byte-identical. A further set of
+chunks share a title with a chunk in another file but carry genuinely different
+text, which is ordinary and needs no handling. Duplicates do need handling:
+they consume two slots in a top-k retrieval for one passage, and a gold label
+anchored to one file's copy scores as a miss when the other copy is retrieved.
+§3d deduplicates on the byte-identical raw body, keeping one chunk that carries
+every location as a citation, and defers near-duplicate handling until §6
+measures whether it is needed.
 
 **Known limitations, recorded rather than hidden.** Roman-numeral sub-parts
 (`i.`, `ii.`) inside a problem are not captured in `parts` metadata; only
@@ -281,20 +284,202 @@ make a stale label look like a quality regression.
 
 ---
 
-## 3. Indexing — **decision pending**
+## 3. Indexing — **decided; implementation pending**
 
 Turn chunks into a searchable index.
 
-Open decisions:
+**Scale sets the terms of every decision below.** The structural chunker
+produces 528 chunks — 35,797 words, 238,074 characters of embedded text, about
+60k tokens. Most published guidance on vector infrastructure is written for
+corpora three to six orders of magnitude larger, and at this size parts of it
+inverts: approximate nearest-neighbour search gives up recall for a speed gain
+too small to observe. Each decision is made against 528 and records the point
+at which it should be reopened.
 
-- **3a. Embedding model** — local (e.g. via Ollama) vs. hosted API; which
-  specific model; dimensionality and cost implications.
-- **3b. Vector storage** — in-memory index (e.g. numpy/FAISS) vs. a real vector
-  database; what persistence and incremental re-indexing need to look like.
-- **3c. Hand-built pipeline vs. framework** (LangChain / LlamaIndex). This
-  decision spans modules 2–5 and should be made once, deliberately.
+### 3c. Hand-built pipeline, not LangChain or LlamaIndex — decided
 
-Options and reasoning: _to be filled in._
+Settled first, because it constrains both the embedding model and the store.
+
+**Hand-built, behind two protocols** — `Embedder` and `VectorStore`. Roughly
+300 lines across modules 3–5, adding `numpy` and one embedding library.
+
+The deciding argument is that the frameworks' central abstraction is the one
+piece this repo already has and has fitted to the corpus. LlamaIndex and
+LangChain both organise a pipeline around a node type they split themselves,
+and §2b's chunker is structure-aware — same-title slide runs, validated problem
+numbering, boilerplate stripping, prepended title paths. None of that survives
+a generic recursive character splitter. Adopting a framework means either
+discarding that work or spending the integration effort teaching the framework
+not to redo it.
+
+The second argument is the eval harness. §2c anchors gold labels to a location
+plus a verbatim snippet, deliberately not to a chunk id. A framework retriever
+returns its own scored-node type, so every eval run would pass through a
+translation layer back onto the locator scheme — a layer maintained on top of
+the framework rather than instead of it.
+
+**What this costs, stated plainly.** Top-k selection, score normalisation, the
+persistence format and the query/document asymmetry all become this repo's bugs
+to have. The failure class is specific and predictable: skipping normalisation
+before a dot product, an off-by-one in top-k, silently comparing vectors that
+came from two different models. Each gets a test in §3e.
+
+Reversibility settled the close call. Hand-built to framework later is an
+adapter, because the protocols are narrow and the eval harness never referenced
+framework types. Framework to hand-built means unpicking abstractions that
+would by then have spread through modules 3, 4 and 5.
+
+Rejected: **LlamaIndex** — the better fit of the two, RAG-native, and it would
+supply much of module 5's response synthesis for free. Rejected on the two
+arguments above, not on any defect. Rejected: **LangChain** — the heaviest
+transitive dependency tree of the three options and the most API churn to pin
+against, while being the least RAG-shaped, so the fraction actually used would
+be small.
+
+### 3a. Embedding model — decided: a protocol, local by default, both measured in module 6
+
+**Cost is not a differentiator at this size and no part of this decision rests
+on it.** The whole corpus is about 60k tokens: $0.0012 through OpenAI's
+`text-embedding-3-small`, $0.0078 through `text-embedding-3-large`. It could be
+re-embedded eight hundred times for a dollar. Latency is equally irrelevant
+over 528 chunks. What actually differs:
+
+- **Reproducibility on a fresh clone.** §6 and §8a promise a reader can clone
+  the repo and re-run the eval harness. A hosted-only embedder narrows that to
+  readers holding an API key and a billing account.
+- **Stability of the recorded numbers.** Hosted embedding endpoints get
+  deprecated and are occasionally updated in place; a pinned local model
+  produces the same vectors indefinitely. Metrics recorded in §6 should outlast
+  a vendor's deprecation cycle.
+- **Quality.** On public retrieval benchmarks `text-embedding-3-large` leads,
+  with `text-embedding-3-small`, `bge-base-en-v1.5` and `nomic-embed-text`
+  close together and task-dependent. Whether that ordering survives on 528
+  chunks of one course's slide decks is precisely the kind of claim this
+  project measures instead of repeating.
+
+**Decision.** Embedding sits behind an `Embedder` protocol
+(`embed_documents`, `embed_query`, `name`, `dim`). The default implementation
+is local: **`bge-base-en-v1.5`**, 768 dimensions, MIT-licensed weights — the
+same licence reasoning as §2a. A hosted implementation is written to the same
+protocol. Module 6 runs the eval set against both and reports the delta.
+
+**This is a default, not a measured winner, and it is recorded as one.** The
+harness that would settle it does not exist until module 6. Choosing the local
+model now buys a fresh-clone path needing no credentials, and the protocol
+keeps the question open rather than closing it early on a guess.
+
+Two implementation details this decision carries. `bge` is asymmetric: queries
+take the prefix `Represent this sentence for searching relevant passages:` and
+documents do not, and applying it in both places or neither degrades retrieval
+silently. And vectors are L2-normalised once at embed time, so cosine
+similarity downstream is a plain dot product that cannot be skipped by
+accident.
+
+Rejected: **hosted only** — marginally better quality at negligible cost, but
+it makes the eval harness unreproducible without credentials, contradicting §6.
+Rejected: **local only** — simpler, but it forecloses the comparison rather
+than deferring it, and the comparison is cheap to keep open.
+
+### 3b. Vector storage — decided: numpy with exact search, plus an embedding cache
+
+528 vectors at 768 dimensions is a 1.6 MB float32 matrix. A search is one
+matrix–vector product, roughly 400k floating-point operations. Exhaustive
+search is therefore exact, immediate, and about 60 lines.
+
+**Decision.** A `VectorStore` protocol with a numpy implementation: a `.npy`
+matrix plus a JSON sidecar of chunk metadata, written to `data/index/`. The
+sidecar records the embedder name and dimension, so loading an index built by a
+different model fails loudly instead of returning meaningless similarities.
+Search returns chunk ids, scores and locators — never a bare row offset, which
+any re-index would invalidate. Metadata filtering by `doc_type` or
+`source_file` is a boolean mask over the sidecar; §6 needs it to construct the
+not-found questions.
+
+**An embedding cache keyed on `(chunk_id, embedder name)`** sits alongside the
+store. §2 established that chunk defects are found by reading output and
+re-running, so the chunker will keep changing; the cache means a chunker change
+re-embeds only the chunks that changed. It is independent of the store choice
+and survives a later move to a database.
+
+Rejected: **FAISS.** Its exact mode (`IndexFlatIP`) is the same exhaustive
+search, so at this scale the dependency buys a faster inner loop on an
+operation already under a millisecond. Its approximate indexes are the reason
+to adopt it at all, and they need roughly 10⁴–10⁵ vectors before the recall
+they give up is repaid in speed; enabling them here would cost retrieval
+quality for nothing observable. Rejected: **a vector database** (Chroma,
+Qdrant, LanceDB) — buys incremental upsert, a filtering query language, and
+concurrent access for §7, at the cost of a service or embedded engine, a
+schema, and a migration story, in exchange for capabilities that are a boolean
+mask and a cache at this size.
+
+**Reopen when** the index passes roughly 50k chunks, or §7's API needs
+concurrent multi-process reads, or §4 adopts a hybrid retriever whose lexical
+half would be better served by a store that ships one. The last is the nearest:
+BM25 over the same sidecar is `rank_bm25` or about 40 lines, and that cost
+belongs to this decision rather than being discovered in §4.
+
+### 3d. Duplicate chunks — decided: deduplicate on the byte-identical raw body
+
+§2 recorded this as open. Re-measured against the current 528-chunk output:
+
+| Identity defined by | chunks involved | groups | distinct after |
+|---|---|---|---|
+| `raw_text`, byte-identical | 123 | 52 | 457 |
+| `raw_text`, alphanumeric-normalised | 139 | 59 | 448 |
+| `text`, title prefix included, exact | 12 | 5 | 521 |
+
+*Correction to §2.* That section reported "139 of 528 chunks byte-identical,
+across 59 distinct bodies". The figure is reproducible but the description was
+wrong: 139/59 is the count after normalising to alphanumeric characters only.
+Byte-identical is 123/52. §2 now carries both figures rather than the
+mislabelled one.
+
+The third row is what changes the decision. Identity depends on which field
+defines it, and the field actually embedded is `text`, which carries the title
+path prepended in §2b. The `Week N On-line` decks re-release `Lecture N` slide
+bodies under different titles — the same content appears as "CDN content
+access: DNS redirection" in one deck and "CDN content access: a closer look" in
+another — so most byte-identical bodies are not duplicates by embedded text at
+all. Deduplicating on the embedded field would collapse 12 chunks and leave the
+problem standing.
+
+**Decision: identity is `raw_text`, byte-identical.** One chunk per distinct
+body enters the index, carrying every location it was found at, and a citation
+can name all of them. 51 of the 52 groups span more than one file, the pattern
+§2 predicted. The surviving chunk keeps the first location in corpus order and
+its title; the others are retained in the index entry so nothing about where
+the passage appears is lost.
+
+Rejected: **no deduplication** — two slots of a top-5 spent on one passage, and
+a §2c gold label anchored to one file's copy scores as a miss when the other is
+retrieved. Rejected: **deduplicating on `text`** — 12 chunks, which leaves the
+problem essentially unaddressed. Rejected: **normalised matching** — 16 further
+chunks collapsed, but it merges bodies differing in punctuation and case, and
+§2's own defects showed those can be a real difference rather than noise.
+Near-duplicate deduplication by embedding similarity stays deferred until §6
+measures whether exact matching leaves a gap.
+
+### 3e. Implementation plan
+
+- `indexing/embed.py` — the `Embedder` protocol and `LocalEmbedder`: bge query
+  prefix, batching, L2-normalisation at embed time.
+- `indexing/cache.py` — `(chunk_id, embedder name) → vector`.
+- `indexing/store.py` — the `VectorStore` protocol and `NumpyStore`: `.npy`
+  plus JSON sidecar, embedder name and dimension checked on load, metadata
+  filter, exact top-k.
+- `indexing/build.py` — `recall-index`, mirroring `recall-ingest`:
+  `data/chunks.jsonl` → `data/index/`. `data/index/` is gitignored on the same
+  reasoning as `chunks.jsonl` in §8a.
+- **Tests use a deterministic fake embedder and neither download a model nor
+  open a socket**, so the suite still passes on a fresh clone with no corpus;
+  the real embedder is exercised in one test marked slow and deselected by
+  default. Covered: top-k ordering against hand-constructed vectors of known
+  angle, save/load round-trip identity, a model or dimension mismatch raising
+  rather than scoring, filtering narrowing the candidate set, the empty-result
+  path §6 depends on, and a cache hit matching a cache miss exactly.
+- `scripts/inspect_index.py`, on the §2 precedent that reading real output
+  found defects the suite passed over. The 76 chunks under 15 words are where
+  to look first.
 
 ---
 

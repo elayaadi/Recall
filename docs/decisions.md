@@ -49,6 +49,43 @@ options rejected and why, is in the linked [SPEC.md](../SPEC.md) section.
   tuning does not mean re-labelling. A label matching zero chunks is a hard
   error that fails the run, never a silent score of 0 — §2c.
 
+## Indexing — module 3
+
+- **2026-09-09 — Hand-built pipeline, not LangChain or LlamaIndex.** The
+  frameworks' central abstraction is the chunker, and §2b's is structure-aware
+  in ways a generic recursive splitter is not; adopting one means discarding
+  that work or teaching the framework not to redo it. §2c's gold labels anchor
+  to a location and snippet rather than a framework node type, so every eval
+  run would carry a translation layer. Reversibility settled the close call:
+  hand-built to framework later is an adapter, the reverse is an unpicking.
+  The cost — top-k, normalisation, persistence and query/document asymmetry
+  become this repo's bugs — is stated in §3c rather than left implicit.
+
+- **2026-09-09 — Embedding behind an `Embedder` protocol, `bge-base-en-v1.5`
+  as the local default, hosted written to the same protocol and measured in
+  module 6.** Cost decides nothing at this size: the whole corpus is ~60k
+  tokens, about a tenth of a cent to embed through a hosted model. What
+  differs is that a hosted-only embedder narrows §6's clone-and-re-run promise
+  to readers with an API key, and that hosted endpoints are deprecated while
+  pinned local weights are not. Recorded explicitly as a default rather than a
+  measured winner, because the harness that would settle it is module 6 — §3a.
+
+- **2026-09-09 — Vector storage: numpy with exact search, plus an embedding
+  cache.** 528 vectors at 768 dimensions is a 1.6 MB matrix and one
+  matrix–vector product. FAISS's exact mode is the same exhaustive search, and
+  its approximate indexes need 10⁴–10⁵ vectors before the recall they give up
+  is repaid — enabling them here would cost quality for nothing observable. A
+  vector database buys upsert, a filter language and concurrency, which are a
+  boolean mask and a cache at this size. The reopening thresholds are written
+  down rather than left to be rediscovered — §3b.
+
+- **2026-09-09 — Duplicate chunks: deduplicate on the byte-identical raw
+  body, keeping every location as a citation.** Which field defines identity
+  is the whole decision: 123 chunks duplicate by `raw_text`, but only 12 by
+  the embedded `text`, because the `Week N` decks re-release `Lecture N`
+  bodies under different titles. Deduplicating on the embedded field would
+  have looked correct and left the problem standing — §3d.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT
@@ -97,3 +134,10 @@ Kept visible rather than edited away, because the reasoning is the point.
   *Fix three chunk-quality defects found by reading the chunks* and *Fix
   content loss on slides that have no distinct title*, with the measured
   before-and-after recorded in §2 rather than the fix landing quietly.
+
+- **A figure was right and its description was wrong.** §2 reported "139 of
+  528 chunks byte-identical, across 59 distinct bodies". Re-measuring while
+  settling §3d reproduced 139/59 only after normalising to alphanumeric
+  characters; byte-identical is 123/52. Both figures now appear in §2, and the
+  distinction turned out to matter — the dedup decision in §3d turns on
+  exactly which normalisation defines identity.
