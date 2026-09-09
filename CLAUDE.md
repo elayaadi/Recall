@@ -64,6 +64,7 @@ uv run pytest -q                                 # no corpus needed
 src/recall/{ingestion,indexing,retrieval,generation,api}/  module code
 eval/         evaluation harness; eval/questions/ holds the hand-written set
 tests/        tests, mirroring the module layout
+scripts/      one-off inspection tools (e.g. reading chunks by hand)
 data/raw/     the working corpus — gitignored, never committed
 data/sample/  small committed fixtures for tests
 docs/         decision record, corpus profile, architecture notes

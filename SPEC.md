@@ -9,8 +9,9 @@ measured against the real corpus. Modules 3–8 are `decision pending`, except
 §8a (publication corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
-and the reasoning. This file is the answer to "why this and not X?" — it should
-let a technical reviewer follow the architecture without me present.
+and the reasoning — including the alternatives that were rejected, so they are
+not quietly reconsidered later. The architecture should be followable from this
+file alone.
 
 ---
 
@@ -28,7 +29,8 @@ does not know, rather than inventing an answer.
   metrics, recorded before and after any tuning.
 - Abstains rather than answering when retrieval finds nothing relevant.
 - Every answer carries citations resolvable to a source file and location.
-- A reviewer can clone it, read the README, and understand each decision.
+- Every decision is recorded with the alternatives it beat, so the design can
+  be understood from the repo without asking the author.
 
 **Non-goals for v1.** OCR for scanned documents. A real UI beyond a minimal
 demo. Multi-user auth. Fine-tuning any model.
@@ -81,9 +83,10 @@ ingest rather than passed over silently.
   "3". That rules out `pypdf` on evidence rather than taste.
 
   Chosen pdfplumber over PyMuPDF: same capability for this job, MIT rather than
-  AGPL. PyMuPDF is ~10× faster, but 578 pages makes speed irrelevant, and AGPL
-  is a licence some employers' legal teams flag on sight — a poor thing to
-  carry in a repo whose purpose is being read by employers.
+  AGPL. PyMuPDF is ~10× faster, which 578 pages makes irrelevant. AGPL's
+  copyleft reaches anything that links the library, constraining how this code
+  could later be reused, relicensed, or vendored into something else; MIT costs
+  nothing here and forecloses nothing.
 
   Rejected: ML layout models (`docling`, `marker`) — best fidelity, but heavy
   dependencies, and they make the pipeline someone else's model rather than a
@@ -387,11 +390,11 @@ run merging, ALL-CAPS syllabus sections, sequential problem numbering — is an
 argument about these specific document types. Swapping in prose documents would
 leave the reasoning intact but aimed at documents the repo no longer contains.
 
-*Why publish a corpus at all.* §0 promises a reviewer can clone the repo and
-follow the decisions, and §6 promises retrieval quality "with real numbers".
-Numbers computed over files nobody else can see are assertions, not evidence.
-With a public corpus a reviewer runs the ingest and the eval harness and
-reproduces them.
+*Why publish a corpus at all.* §6 promises retrieval quality "with real
+numbers". Numbers computed over files nobody else can obtain are assertions
+rather than evidence: they cannot be re-run, re-checked after a change, or
+compared against a different approach. With a public corpus the ingest and the
+eval harness run anywhere and the numbers reproduce.
 
 **Timing: the swap happens before the §6 question set is written.** Gold labels
 anchor to source file, location, and verbatim snippet (§2c). There are ~35 of
@@ -408,8 +411,8 @@ directory argument and hard-codes nothing.
 
 Rejected: **keeping the corpus private permanently and shipping only synthetic
 fixtures** — zero exposure and no re-labelling, but the evaluation numbers
-become unverifiable claims, which removes most of what this project is meant to
-demonstrate. Rejected for v1: **maintaining both corpora with two eval sets** —
-the most honest option and the most impressive, but it doubles the hand
-labelling, the one step no tooling makes cheaper. Reasonable to add once the
+become unverifiable claims, which defeats the point of measuring them at all.
+Rejected for v1: **maintaining both corpora with two eval sets** — the most
+rigorous option, but it doubles the hand labelling, the one step no tooling
+makes cheaper. Reasonable to add once the
 public set exists.

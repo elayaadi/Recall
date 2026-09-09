@@ -74,12 +74,14 @@ Kept visible rather than edited away, because the reasoning is the point.
 
 - **A reported metric was wrong and was corrected in public.** The corpus
   profile first said 14 pages had no text layer, from a diagnostic that treated
-  any page under 20 characters as empty. Commit `4622d06` corrected both the
-  figure and the diagnostic's description of what those pages actually are.
+  any page under 20 characters as empty. The commit *Record ingestion results
+  and correct the text-less page count* fixed both the figure and the
+  diagnostic's description of what those pages actually are.
 
 - **Reading the output found what the tests did not.** Inspecting real chunks
   surfaced a content-loss bug: on slides where every span shares one font size,
   the largest-span heuristic moved the whole slide into the title field and
   dropped it from the body text that eval snippets match against. Fixed in
-  `c6acf10` and `e14aa44`, with the measured before-and-after recorded in §2
-  rather than the fix landing quietly.
+  *Fix three chunk-quality defects found by reading the chunks* and *Fix
+  content loss on slides that have no distinct title*, with the measured
+  before-and-after recorded in §2 rather than the fix landing quietly.

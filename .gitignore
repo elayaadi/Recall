@@ -10,6 +10,9 @@ index/
 *.npy
 eval/runs/
 
+# Local agent context — must never be committed
+CLAUDE.local.md
+
 # Secrets
 .env
 .env.*
