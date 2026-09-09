@@ -18,9 +18,14 @@ import pdfplumber
 # Footers like "Page 1 of 2" differ per page, so repeated-line detection cannot
 # catch them, but they are boilerplate all the same.
 PAGE_FOOTER_RE = re.compile(r"^\s*page\s+\d+\s*(of\s+\d+)?\s*$", re.I)
-# Decks also print a bare slide number. Dropped only when it equals the page's
-# own index, so a numeric line that is real content is never mistaken for one.
+# Decks print a slide number, sometimes alone on its line and sometimes trailing
+# the footer on the same visual line ("(c) Course, Networks: 7"). The second form
+# makes an otherwise repeated line unique per page, which hides it from
+# repeated-line detection, so it is removed here. Both are dropped only when the
+# number equals the page's own index, so a numeric line or a line ending in a
+# number that is real content is never mistaken for one.
 BARE_NUMBER_RE = re.compile(r"^\s*(\d{1,4})\s*$")
+TRAILING_NUMBER_RE = re.compile(r"^(.*\S)\s+(\d{1,4})$")
 
 _LINE_TOLERANCE = 2.5  # points; words within this vertical distance are one line
 
@@ -74,7 +79,15 @@ class Page:
             (s for s in spans if abs(s.size - largest) < 0.01),
             key=lambda s: (round(s.top, 1), s.x0),
         )
-        title = " ".join(s.text.strip() for s in winners).strip()
+        # Some decks render a title twice, offset, for a shadow effect. Both
+        # copies are at the title size, so joining every span would give
+        # "HTTPS - Certificates HTTPS - Certificates".
+        parts: list[str] = []
+        for span in winners:
+            text = span.text.strip()
+            if text and text != (parts[-1] if parts else None):
+                parts.append(text)
+        title = " ".join(parts).strip()
         return title or None
 
 
@@ -149,6 +162,15 @@ def _span(words: list[dict]) -> Span:
     )
 
 
+def _drop_page_number(line: str, index: int) -> str | None:
+    """Remove the page's own number from a line, or the line if that is all it is."""
+    if (m := BARE_NUMBER_RE.match(line)) and int(m.group(1)) == index:
+        return None
+    if (m := TRAILING_NUMBER_RE.match(line)) and int(m.group(2)) == index:
+        return m.group(1)
+    return line
+
+
 def load(path: str | Path) -> Document:
     """Read a PDF into pages. Text-less pages are kept, not dropped.
 
@@ -162,10 +184,10 @@ def load(path: str | Path) -> Document:
             words = page.extract_words(extra_attrs=["size"], use_text_flow=False)
             lines, spans = _words_to_lines(words)
             lines = tuple(
-                l
-                for l in lines
-                if not PAGE_FOOTER_RE.match(l)
-                and not ((m := BARE_NUMBER_RE.match(l)) and int(m.group(1)) == index)
+                cleaned
+                for line in lines
+                if not PAGE_FOOTER_RE.match(line)
+                and (cleaned := _drop_page_number(line, index)) is not None
             )
             pages.append(
                 Page(

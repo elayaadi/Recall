@@ -174,20 +174,46 @@ there are baseline numbers.
 
 | | |
 |---|---|
-| chunks (structural) | 499 |
-| words | 38,368 |
-| mean / median words per chunk | 77 / 66 |
-| shortest / longest chunk | 5 / 742 words |
-| multi-slide merged chunks | 53 |
-| pages producing no chunk | 25, each reported by page number |
+| chunks (structural) | 494 |
+| words | 35,648 |
+| mean / median words per chunk | 72 / 61 |
+| shortest / longest chunk | 1 / 742 words |
+| multi-slide merged chunks | 51 |
+| pages producing no chunk | 32, each reported by page number |
 
 All 29 files were routed to the right chunker by structural signal alone, with
 no filename fallback. Problem-sheet chunk counts match the numbering found
 independently during profiling (6, 8, 5, 3, 7, 4).
 
+**Three defects found by reading the chunks, not by the tests.** Inspecting the
+shortest chunks after the first run (`scripts/inspect_chunks.py --shortest`)
+found each of these, and each is now fixed with a regression test:
+
+- The footer often carries the slide number on the same visual line
+  (`(c) Course, Networks: 7`), which makes it unique per page and therefore
+  invisible to repeated-line detection. It was surviving into chunk bodies —
+  on some slides it *was* the whole body. Removing it cut 2,720 words of pure
+  boilerplate, about 7% of the corpus text.
+- Some decks render a title twice, offset, for a shadow effect. Both copies sit
+  at the title font size, so the title read as
+  `HTTPS - Certificates HTTPS - Certificates`.
+- The title was not always stripped from its own chunk body, because the same
+  characters render differently in the two places (`Cookies: keeping state` in
+  the title, `Cookies: keeping " state "` in the body). Comparison is now
+  punctuation- and case-insensitive; 4 chunks still open with their own title,
+  down from roughly 29.
+
+This is the argument for writing chunks to JSONL rather than passing them
+straight to the indexer: all three were obvious on sight and none would have
+failed a test written before the corpus was read.
+
 **Known limitations, recorded rather than hidden.** Roman-numeral sub-parts
 (`i.`, `ii.`) inside a problem are not captured in `parts` metadata; only
-`a)`–`h)` are. Syllabus tables flatten to a row-ambiguous stream. A same-title
+`a)`–`h)` are. Deck cover slides (21 of them) and recurring agenda/roadmap
+slides survive as low-value chunks that mention many topics and answer none;
+they are left in deliberately so module 6 can measure whether they hurt, rather
+than removed on a hunch. 25 chunks contain the instructor's email address,
+which matters only for the private development corpus (see §8a). Syllabus tables flatten to a row-ambiguous stream. A same-title
 run merged across a text-less page cites non-contiguous pages ("slides 2, 4"),
 which is correct but unusual to read.
 

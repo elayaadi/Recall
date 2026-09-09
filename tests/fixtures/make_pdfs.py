@@ -26,7 +26,9 @@ BODY_SIZE = 12
 FOOTER_SIZE = 8
 
 
-def _slide(pdf: canvas.Canvas, title: str | None, body: list[str], footer: bool = True) -> None:
+def _slide(
+    pdf: canvas.Canvas, title: str | None, body: list[str], number: int, footer: bool = True
+) -> None:
     width, height = landscape(letter)
     if title:
         pdf.setFont("Helvetica-Bold", TITLE_SIZE)
@@ -37,8 +39,10 @@ def _slide(pdf: canvas.Canvas, title: str | None, body: list[str], footer: bool 
         pdf.drawString(50, y, line)
         y -= 20
     if footer:
+        # The real decks print the slide number trailing the footer on the same
+        # line, which makes the footer unique per page unless it is removed.
         pdf.setFont("Helvetica", FOOTER_SIZE)
-        pdf.drawString(50, 30, BOILERPLATE)
+        pdf.drawString(50, 30, f"{BOILERPLATE} {number}")
     pdf.showPage()
 
 
@@ -47,15 +51,15 @@ def make_deck(path: Path) -> Path:
     repeat of that title, a page with no text layer at all, and a title-only
     divider slide whose body is a diagram."""
     pdf = canvas.Canvas(str(path), pagesize=landscape(letter))
-    _slide(pdf, "Introduction", ["Course overview and goals", "What we will build"])
-    _slide(pdf, "Web caching", ["A cache stores responses near the client"])
-    _slide(pdf, "Web caching", ["Hit ratio determines the saving"])
-    _slide(pdf, "Web caching (cont.)", ["Conditional GET revalidates a stale copy"])
-    _slide(pdf, None, [], footer=False)  # no text layer at all
-    _slide(pdf, "Routing", ["Hot potato routing hands traffic off early"])
-    _slide(pdf, "Web caching", ["Revisited later in the deck, deliberately"])
-    _slide(pdf, "Summary", ["Caching and routing both trade cost for latency"])
-    _slide(pdf, "Topology diagram", [])  # title over a diagram: nothing to retrieve
+    _slide(pdf, "Introduction", ["Course overview and goals", "What we will build"], 1)
+    _slide(pdf, "Web caching", ["A cache stores responses near the client"], 2)
+    _slide(pdf, "Web caching", ["Hit ratio determines the saving"], 3)
+    _slide(pdf, "Web caching (cont.)", ["Conditional GET revalidates a stale copy"], 4)
+    _slide(pdf, None, [], 5, footer=False)  # no text layer at all
+    _slide(pdf, "Routing", ["Hot potato routing hands traffic off early"], 6)
+    _slide(pdf, "Web caching", ["Revisited later in the deck, deliberately"], 7)
+    _slide(pdf, "Summary", ["Caching and routing both trade cost for latency"], 8)
+    _slide(pdf, "Topology diagram", [], 9)  # title over a diagram: nothing to retrieve
     pdf.save()
     return path
 

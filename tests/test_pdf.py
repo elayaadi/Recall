@@ -28,3 +28,21 @@ def test_page_footers_are_dropped_even_though_they_differ_per_page(problem_sheet
 
 def test_source_hash_is_recorded(deck_path):
     assert len(load(deck_path).sha256) == 64
+
+
+def test_the_slide_number_is_removed_from_the_end_of_a_footer_line(deck_path):
+    pages = {p.number: p for p in load(deck_path).pages}
+    assert "(c) Example Course, Networks 101" in pages[8].lines
+    assert not any(line.endswith(" 8") for line in pages[8].lines)
+
+
+def test_a_number_that_is_not_the_page_number_is_left_alone(deck_path):
+    # On page 2 the footer reads "... Networks 101 2": the trailing 2 is the
+    # page number and goes, the 101 is content and stays.
+    lines = {p.number: p.lines for p in load(deck_path).pages}[2]
+    assert any(line.endswith("Networks 101") for line in lines)
+
+
+def test_a_title_rendered_twice_for_a_shadow_effect_is_not_doubled(deck_path):
+    pages = {p.number: p for p in load(deck_path).pages}
+    assert pages[3].largest_span_text() == "Web caching"

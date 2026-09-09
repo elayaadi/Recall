@@ -58,3 +58,9 @@ def test_a_title_only_divider_slide_produces_no_chunk(deck_path):
 
 def test_bare_slide_numbers_do_not_reach_chunk_text(deck_path):
     assert all(line.strip() != "2" for c in _chunks(deck_path) for line in c.raw_text.splitlines())
+
+
+def test_the_title_is_stripped_from_the_body_despite_punctuation_differences(deck_path):
+    # The fixture's slide 6 body repeats its title with different quoting.
+    routing = next(c for c in _chunks(deck_path) if c.locator.title == "Routing")
+    assert "Hot potato routing hands traffic off early" in routing.raw_text
