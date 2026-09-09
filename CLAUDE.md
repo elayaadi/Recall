@@ -84,3 +84,7 @@ Format: `YYYY-MM-DD — <area>: <choice> — see SPEC.md §<n>`
 - 2026-09-08 — Chunking: structure-aware per format (title/heading path
   prepended to chunk text), with uniform token windowing kept as a committed
   baseline so module 6 can measure the delta — see SPEC.md §2b
+- 2026-09-09 — Corpus: develop against the real CS447 PDFs (gitignored, never
+  committed); before the module 6 question set is written, swap in openly
+  licensed MIT OpenCourseWare material of the same shape — decks, problem
+  sheets, syllabus — so published metrics are reproducible — see SPEC.md §8a

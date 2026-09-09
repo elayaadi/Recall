@@ -4,8 +4,9 @@ A retrieval-augmented generation system that answers questions from personal
 study notes and course materials, with citations back to the source, and a
 hand-built evaluation harness that proves retrieval quality with real numbers.
 
-**Status:** module 2 (ingestion) fully decided, implementation not started.
-Modules 3–8 are `decision pending`.
+**Status:** modules 1–2 done — ingestion is decided, implemented, tested, and
+measured against the real corpus. Modules 3–8 are `decision pending`, except
+§8a (publication corpus), settled early because it constrains §6.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning. This file is the answer to "why this and not X?" — it should
@@ -50,6 +51,8 @@ Parse markdown, PDF, and PowerPoint into a common chunked format carrying
 source file, section/heading, and page or slide number.
 
 **Corpus.** Measured, not assumed — see [docs/corpus-profile.md](docs/corpus-profile.md).
+This is the private development corpus; what ships with the public repo is
+decided in §8a.
 29 PDFs from one course: 22 slide decks, 6 problem sheets, 1 syllabus; 578
 pages, ~43k words, English. **No scans**, so OCR being out of scope costs
 nothing. 25 of 578 pages produce no chunk — a few with no text layer, the rest
@@ -314,7 +317,7 @@ Options and reasoning: _to be filled in._
 
 ---
 
-## 8. Docs — **decision pending**
+## 8. Docs and publication — **8a decided; README pending**
 
 README covering architecture, evaluation results with real numbers, known
 limitations, and a short "how this was built" note: agentic-coding-assisted,
@@ -322,3 +325,46 @@ human-reviewed, tested, with decisions made deliberately rather than defaulted
 to.
 
 Options and reasoning: _to be filled in._
+
+### 8a. Publication corpus — decided: build on the real notes, publish on MIT OCW
+
+Development runs against the real CS447 materials — 29 PDFs in `data/raw/`,
+gitignored and never committed. That is the corpus every module-2 decision was
+measured against, and the corpus the system actually exists to answer questions
+from.
+
+For publication those files are replaced with openly-licensed course material
+from **MIT OpenCourseWare** (CC BY-NC-SA), chosen to match the *shape* of the
+current corpus: lecture slide decks, problem sets, and a syllabus.
+
+*Why the same shape.* Every §2 decision — the three chunker branches, slide-title
+run merging, ALL-CAPS syllabus sections, sequential problem numbering — is an
+argument about these specific document types. Swapping in prose documents would
+leave the reasoning intact but aimed at documents the repo no longer contains.
+
+*Why publish a corpus at all.* §0 promises a reviewer can clone the repo and
+follow the decisions, and §6 promises retrieval quality "with real numbers".
+Numbers computed over files nobody else can see are assertions, not evidence.
+With a public corpus a reviewer runs the ingest and the eval harness and
+reproduces them.
+
+**Timing: the swap happens before the §6 question set is written.** Gold labels
+anchor to source file, location, and verbatim snippet (§2c). There are ~35 of
+them, hand-written, and they are the only genuinely expensive human artifact in
+this project. Written against the private corpus they cannot be published, and
+if the corpus is swapped afterwards they all have to be written again. Modules
+3–5 are indifferent to which documents are in `data/raw/`, so the swap costs
+nothing at any point before module 6 and a full re-labelling after it.
+
+What regenerates at swap time, all from a command rather than by hand: the
+corpus profile, the measured ingestion table in §2, and the 44% title-heuristic
+figure in §2a. The private corpus stays usable locally — the pipeline takes a
+directory argument and hard-codes nothing.
+
+Rejected: **keeping the corpus private permanently and shipping only synthetic
+fixtures** — zero exposure and no re-labelling, but the evaluation numbers
+become unverifiable claims, which removes most of what this project is meant to
+demonstrate. Rejected for v1: **maintaining both corpora with two eval sets** —
+the most honest option and the most impressive, but it doubles the hand
+labelling, the one step no tooling makes cheaper. Reasonable to add once the
+public set exists.
