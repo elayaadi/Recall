@@ -113,11 +113,11 @@ def test_the_generator_reports_the_model_as_its_name():
     assert LocalGenerator("qwen2.5:7b-instruct").name == "qwen2.5:7b-instruct"
 
 
-def test_an_unnamed_hosted_provider_is_refused_rather_than_guessed():
-    """SPEC.md 5a settled that there is one; it did not say whose."""
+def test_a_deferred_hosted_generator_is_refused_rather_than_guessed():
+    """SPEC.md 5a defers it to the end of the project; 8 carries the trigger."""
     with pytest.raises(ValueError) as exc:
         make_generator("hosted")
-    assert "not named yet" in str(exc.value)
+    assert "deferred" in str(exc.value)
 
 
 def test_the_model_and_timeout_survive_make_generator():

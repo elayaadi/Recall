@@ -32,8 +32,8 @@ your own knowledge of the subject.
 briefly what is missing. Passages that are on the same topic but do not answer \
 the question are not an answer.
 - Quote or closely paraphrase the wording of the passage a claim cites.
-- Write "answer" as the prose a reader sees: it should read as continuous text \
-and say the same thing as the claims, with no passage ids in it.
+- Write "answer" as continuous prose saying the same thing as the claims. The \
+claims are what is shown to a reader, so put your care into them.
 """
 
 

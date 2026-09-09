@@ -172,6 +172,18 @@ afterwards. Each entry says which part is unmeasured.
   number. Malformed output is a defined failure mode, never silently coerced
   into an answer — §5b.
 
+- **2026-09-09 — Amended the same day on evidence: the prose a reader sees is
+  composed from the verified claims, not taken from the model's own `answer`
+  string.** As first written, §5b left the reader-facing text as the one part of
+  the response §5c never checked. Three defects on the first two real runs came
+  from it — ids written into the prose, a stray `}` inside a valid JSON string,
+  and, decisively, sentences left pointing at nothing once the ids were removed
+  (*"…is stated in passage, which says…"*). The first two are cleanable and the
+  third is not. Composing makes the text grounded by construction and stops a
+  dropped claim from reaching the answer at all. The model is still asked for
+  prose and it is kept as `Answer.draft`, so its task is unchanged and §6 can
+  compare the two without another run — §5b.
+
 - **2026-09-09 — Grounding: deterministic in the answer path, entailment judge
   at eval time.** Ids resolving to chunks that were in the context, plus an
   n-gram overlap with the cited chunk — no model call, so it costs nothing to
@@ -195,12 +207,22 @@ afterwards. Each entry says which part is unmeasured.
   interface would buffer to the same place. Streaming is additive to a blocking
   protocol if §7 wants it; the reverse is an unpicking — §5e.
 
-- **2026-09-09 — The hosted generator's provider is still unnamed, and the
-  code refuses rather than guessing.** 5a settled that there is a hosted
-  implementation behind the protocol; it did not settle whose. `make_generator`
-  raises on any kind but `local`, and the `hosted-gen` extra does not exist yet,
-  so the gap is visible instead of being closed by whichever provider was
-  nearest to hand — §5a, §5e.
+- **2026-09-09 — The hosted generator is deferred to the end of the project,
+  with the trigger written into §8.** The `Generator` protocol is built and the
+  local implementation runs; the second one behind it does not exist yet.
+  Deferral with a named trigger, the shape §4c used for the reranker, rather
+  than a reversal of §5a. Two free providers needing no payment method were
+  checked first — Groq, OpenAI-compatible and so needing no new dependency, and
+  Google AI Studio, a stronger model needing `google-genai` for reliable schema
+  enforcement — so the deferral is recorded as a choice and not as the option
+  being unavailable. `make_generator` raises on any kind but `local` and the
+  `hosted-gen` extra does not exist, so the gap stays visible in the code.
+
+  **The cost lands on §6 and is stated there rather than discovered later:
+  module 6 measures the local path alone and reports no delta.** §5a's argument
+  for the protocol was that it turns an expected gap into a measured number;
+  until the second implementation exists that number does not, and §6 says so
+  instead of reporting a comparison it did not run — §5a, §5e, §8.
 
 - **2026-09-09 — The `hosted` extra is split into `hosted-embed` and
   `hosted-gen`.** `hosted = ["openai"]` meant "hosted *embedder*"; a second

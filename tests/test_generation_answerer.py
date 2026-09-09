@@ -58,7 +58,7 @@ def test_a_grounded_answer_is_returned_with_its_citations(store, fake_embedder, 
 
     assert a.outcome == ANSWERED
     assert a
-    assert a.text == "They queue."
+    assert a.text == GROUNDED  # composed from the claim, not the model's prose
     assert len(a.claims) == 1
     assert a.claims[0].citations
     assert a.citations() == list(a.claims[0].citations)
@@ -197,3 +197,44 @@ def test_the_model_is_asked_with_this_querys_ids_in_its_schema(store, fake_embed
     enum = schema["properties"]["claims"]["items"]["properties"]["chunk_ids"]["items"]
     assert chunk_id in enum["enum"]
     assert "why do routers drop packets" in generator.prompts[0]
+
+
+def test_the_prose_is_composed_from_the_verified_claims(store, fake_embedder, chunk_id):
+    """5b amended: what a reader sees is grounded by construction, not patched."""
+    a = answerer_for(
+        store, fake_embedder,
+        generation_response(
+            answer="Ignore me [id: deadbeef]. }",
+            claims=[(GROUNDED, [chunk_id]), ("which is called queueing loss", [chunk_id])],
+        ),
+    ).answer("q")
+
+    assert a.outcome == ANSWERED
+    assert a.text == f"{GROUNDED} which is called queueing loss"
+    assert "[id:" not in a.text
+    assert "}" not in a.text
+
+
+def test_the_models_own_prose_is_kept_as_an_unused_draft(store, fake_embedder, chunk_id):
+    """Kept so 6 can compare the two without a second run."""
+    a = answerer_for(
+        store, fake_embedder,
+        generation_response(answer="the model's wording", claims=[(GROUNDED, [chunk_id])]),
+    ).answer("q")
+
+    assert a.draft == "the model's wording"
+    assert a.text != a.draft
+
+
+def test_a_dropped_claim_never_reaches_the_prose(store, fake_embedder, chunk_id):
+    """The whole point: unverified text cannot appear in what a reader sees."""
+    a = answerer_for(
+        store, fake_embedder,
+        generation_response(
+            claims=[(GROUNDED, [chunk_id]), ("sourdough needs a long autolyse", [chunk_id])],
+        ),
+    ).answer("q")
+
+    assert a.text == GROUNDED
+    assert "sourdough" not in a.text
+    assert [c.text for c in a.dropped] == ["sourdough needs a long autolyse"]

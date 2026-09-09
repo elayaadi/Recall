@@ -15,6 +15,7 @@ or reported as a refusal the model did not make.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 ANSWERED = "answered"
 NO_PASSAGES = "no_passages"          # 4b: retrieval abstained, nothing reached here
@@ -41,6 +42,25 @@ class Claim:
     citations: tuple[str, ...] = ()
 
 
+def compose(claims: Sequence[Claim]) -> str:
+    """Build the prose a reader sees out of the claims that passed 5c's check.
+
+    SPEC.md 5b originally made this the model's own `answer` string. Three
+    separate defects on the first real runs came from that: the model wrote
+    passage ids into it, and it emitted a stray `}` inside the string. Removing
+    the ids left sentences referring to something deleted — "this is stated in
+    passage, which says" — which no amount of cleaning up can repair, because
+    the sentence was built around a reference that is now gone.
+
+    Composing instead makes the reader-facing text grounded by construction: it
+    contains exactly the claims that were checked against the passages they
+    cite, so there is nothing to strip and nothing that can drift from what was
+    verified. The cost is the model's connective wording, which is why the
+    model's own prose is kept as `Answer.draft` rather than discarded.
+    """
+    return " ".join(claim.text.strip() for claim in claims if claim.text.strip())
+
+
 @dataclass(frozen=True)
 class Answer:
     """What generation decided, including deciding not to answer."""
@@ -52,6 +72,11 @@ class Answer:
     reason: str
     generator: str
     dropped: tuple[Claim, ...] = ()
+    # The model's own prose. Not shown as the answer — it is unverified, and 5b
+    # is now explicit that what a reader sees is composed from checked claims.
+    # Kept because the model's task is unchanged by this decision, so module 6
+    # can compare the two without a second run.
+    draft: str = ""
 
     @property
     def answered(self) -> bool:

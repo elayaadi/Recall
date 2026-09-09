@@ -60,28 +60,6 @@ def shares_phrase(claim_text: str, passage_text: str, *, n: int = NGRAM_WORDS) -
     return bool(_ngrams(claim_words, n) & _ngrams(passage_words, n))
 
 
-def strip_passage_ids(text: str, chunk_ids: Sequence[str]) -> str:
-    """Remove passage ids the model wrote into the prose a reader sees.
-
-    The instruction asks for an answer with no ids in it, and the first real run
-    against the corpus produced three of them anyway — `(id: 2bf65592e5adecb9)`
-    inline — which is the instruction-following weakness 5a records about the
-    default backend, showing up on the first query rather than in the abstract.
-
-    This is formatting, not coercion: it removes the id token and nothing else,
-    so what the answer asserts is unchanged and 5c still checks the claims
-    rather than this text. The citations remain, attached to the claims where
-    they can be verified, which is where 5b decided they belong.
-    """
-    if not chunk_ids:
-        return text
-    ids = "|".join(re.escape(cid) for cid in chunk_ids)
-    text = re.sub(rf"[\[(]\s*id:\s*(?:{ids})\s*[\])]", "", text)
-    text = re.sub(rf"\b(?:{ids})\b", "", text)
-    text = re.sub(r"[ \t]{2,}", " ", text)
-    return re.sub(r"\s+([.,;:])", r"\1", text).strip()
-
-
 @dataclass(frozen=True)
 class ClaimCheck:
     """One claim's verdict, carrying the reason so a failure can be read."""

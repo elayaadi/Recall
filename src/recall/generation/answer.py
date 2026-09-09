@@ -73,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
         help=f"seconds to wait for the model (default {TIMEOUT_SECONDS})",
     )
     parser.add_argument(
+        "--show-draft", action="store_true",
+        help="also print the model's own prose, which is not what a reader sees",
+    )
+    parser.add_argument(
         "--show-prompt", action="store_true",
         help="print the assembled prompt and exit without calling a model",
     )
@@ -122,6 +126,9 @@ def main(argv: list[str] | None = None) -> int:
         for citation in claim.citations:
             print(f"       {citation}")
     _show_dropped(answer)
+    if args.show_draft and answer.draft:
+        print(f"\n  the model's own prose (unverified, not shown to a reader):")
+        print(f"    {' '.join(answer.draft.split())}")
     return 0
 
 

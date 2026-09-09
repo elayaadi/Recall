@@ -25,9 +25,10 @@ from .models import (
     NO_PASSAGES,
     UNVERIFIED,
     Answer,
+    compose,
 )
 from .prompt import build_prompt, response_schema
-from .verify import NGRAM_WORDS, strip_passage_ids, verify
+from .verify import NGRAM_WORDS, verify
 
 # Uncalibrated. One verified claim is the weakest non-zero bar — it asks that
 # the answer rest on something checkable, not that it rest on much. Module 6
@@ -93,5 +94,7 @@ class Answerer:
                 name, dropped=dropped,
             )
 
-        prose = strip_passage_ids(text, list(context))
-        return Answer(query, prose, tuple(kept), ANSWERED, "", name, dropped=dropped)
+        return Answer(
+            query, compose(kept), tuple(kept), ANSWERED, "", name,
+            dropped=dropped, draft=text,
+        )

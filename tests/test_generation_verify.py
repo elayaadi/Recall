@@ -16,7 +16,6 @@ from recall.generation.verify import (
     check_claim,
     expand_citations,
     shares_phrase,
-    strip_passage_ids,
     verify,
 )
 
@@ -122,27 +121,3 @@ def test_a_kept_claim_comes_back_with_its_citations_filled_in():
     chunk = make_chunk(text=PASSAGE)
     kept, _ = verify([Claim("the output queue is full", (chunk.chunk_id,))], context_of(chunk))
     assert kept[0].citations == (chunk.citation(),)
-
-
-def test_passage_ids_are_stripped_from_the_prose_a_reader_sees():
-    """Found on the first real run: the model wrote ids the instruction forbids."""
-    cleaned = strip_passage_ids(
-        "Routers queue packets (id: 2bf65592e5adecb9). They then drop them.",
-        ["2bf65592e5adecb9"],
-    )
-    assert cleaned == "Routers queue packets. They then drop them."
-
-
-def test_a_bare_id_is_stripped_too():
-    assert strip_passage_ids("as 2bf65592e5adecb9 says", ["2bf65592e5adecb9"]) == "as says"
-
-
-def test_stripping_leaves_text_that_has_no_ids_alone():
-    text = "Routers drop packets when the output queue is full."
-    assert strip_passage_ids(text, ["2bf65592e5adecb9"]) == text
-
-
-def test_stripping_never_removes_an_id_that_was_not_in_the_context():
-    """It is cleanup of this query's labels, not a general scrub of hex strings."""
-    text = "the digest deadbeefdeadbeef matters"
-    assert strip_passage_ids(text, ["2bf65592e5adecb9"]) == text

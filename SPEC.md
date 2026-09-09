@@ -799,8 +799,27 @@ hosted option. What differs is behaviour.
 
 **Decision.** Generation sits behind a `Generator` protocol. The default
 implementation is local, through Ollama. A hosted implementation is written to
-the same protocol. Module 6 runs the question set against both and reports the
-delta.
+the same protocol, and module 6 reports the delta between them.
+
+**Amended 2026-09-09: the hosted implementation is deferred to the end of the
+project, and the consequence is stated rather than left implicit.** The protocol
+is built; the second implementation behind it is not. This is the shape §4c used
+for the reranker — deferral with a named trigger — rather than a reversal, and
+the trigger is the last module rather than a measurement.
+
+The cost is specific and it lands on §6: **module 6 measures the local path
+alone and reports no local-versus-hosted delta.** The paragraph above says the
+protocol exists to turn the expected gap into a measured number; until the
+second implementation exists, that number does not, and §6 must say so instead
+of reporting a comparison it did not run. What reopens this is the hosted
+implementation landing before §6 is re-run — after which the delta is measured
+rather than described.
+
+Two free providers were checked and either would work without a payment method:
+Groq, which is OpenAI-compatible and so needs no new dependency, and Google AI
+Studio, which serves a stronger model but needs `google-genai` for reliable
+schema enforcement. Neither was adopted. This is recorded because the reason for
+deferring was not that the option was unavailable.
 
 **The protocol is doing a different job than it did in §3a, and it is recorded
 as such.** In §3a it kept a close call open. Here the call is not expected to
@@ -870,6 +889,45 @@ passage; this repo expands that to locations.** A collapsed hit holds several
 citation strings (§4d) — the same passage re-released in two decks — and the
 prompt shows the passage once. Expanding after the model, never before, is what
 keeps the merged citations §4d exists to preserve.
+
+**Amended 2026-09-09 on evidence from the first real runs: the prose a reader
+sees is composed from the verified claims, not taken from the model's `answer`
+string.** As originally written, this section made the reader-facing text the
+one part of the response that 5c never checks — the claims were verified and the
+prose was not, and the prose is what a reader actually reads.
+
+Three defects in the first two runs came from that, all of them the same root
+cause and none of them fixable in general:
+
+- The model wrote passage ids into the prose (`This is stated in passage
+  [id: dfc0f205814011a8], which says…`), which the instruction forbids in as
+  many words.
+- It emitted a stray `}` inside the JSON string — valid JSON, junk prose.
+- Removing the ids left sentences pointing at nothing: `…is stated in passage,
+  which says…`. **This is the one that settled it.** The first two are cleanable
+  and the third is not, because the sentence was built around a reference that
+  no longer exists, and no amount of cleaning up reconstructs the sentence that
+  should have been written instead.
+
+Composing the prose from the claims that passed 5c makes the reader-facing text
+grounded by construction: it contains exactly what was checked against the
+passages it cites, so there is nothing to strip and no way for it to drift from
+what was verified. A dropped claim can no longer appear in the answer, which
+under the original design it could.
+
+The cost is real and is not hidden: the answer loses the model's connective
+wording and reads as sequential sentences rather than flowing prose. The model
+is still asked for its own prose and it is still parsed — kept as
+`Answer.draft`, unused for the reader — so the model's task is unchanged by this
+amendment and §6 can compare composed against drafted without a second run.
+
+Rejected: **patching the model's prose with cleanup rules.** That is what the
+code did for one commit, and each new symptom needed a new rule while the
+dangling-reference class stayed unfixable. Rejected: **using the model's prose
+when it looks clean and composing only when it does not** — better output when
+the model behaves, and it makes the fallback rate a §6 number, but "looks clean"
+is one more heuristic to calibrate in a module that already ships two
+uncalibrated thresholds.
 
 ### 5c. Grounding check — decided: deterministic in the answer path, entailment judge at eval time
 
@@ -961,36 +1019,45 @@ that with no mechanism available to fix it.
 **The `hosted` extra is split as part of this module.** `pyproject.toml`
 currently declares `hosted = ["openai"]`, which means "hosted *embedder*"; a
 generation provider makes that name inaccurate and would install an embedding
-dependency for anyone who wanted a generator. It becomes `hosted-embed` and
-`hosted-gen`. Doing it now is a small edit to `pyproject.toml` and the
+dependency for anyone who wanted a generator. It becomes `hosted-embed`, and
+`hosted-gen` is added by whichever provider lands, so an extra never names a
+dependency the repo does not have. Doing it now is a small edit to `pyproject.toml` and the
 documented commands; doing it after §7 publishes an install command is a
 breaking change.
 
 ### Measured result
 
 The module is built and tested. **It is not measured** — every number below is
-either a property of the suite or a single observation, and none of them is a
-quality metric. Module 6 is what produces those.
+either a property of the suite or a handful of single observations, and none of
+them is a quality metric. Module 6 is what produces those.
 
 | | |
 |---|---|
-| tests | 214 passing, 1 deselected, 2.6s |
+| tests | 213 passing, 1 deselected, 2.7s |
 | needed to run them | no model, no network, no credentials |
 | new modules | `generation/` (6 files), `eval/grounding.py` |
 | generation dependency added | none — Ollama over the standard library |
 
-**One real query, end to end, against the 457-entry index.** *why do routers
-drop packets* returned three claims, all of which passed 5c's check, citing
-`cs447 Lecture 4.pdf, slide 25` and `cs447 Lecture 5.pdf, slide 10`. The
-retrieval-abstention path also ran end to end: *explain the three way handshake*
-returned `NO_PASSAGES` at 0.574 against the 0.630 threshold and never reached
-the model, which is the figure §4 recorded for that query.
+**Real queries, end to end, against the 457-entry index**, on §5a's default
+`qwen2.5:7b-instruct` and on `gemma3:4b`:
 
-**The model was `gemma3:4b`, not §5a's default.** `qwen2.5:7b-instruct` is not
-pulled on this machine and was not downloaded to produce a nicer number. So this
-is evidence that the path works, and evidence about nothing else — in particular
-it is not a data point about the local backend's quality, because it is not the
-local backend §6 will report on.
+| Query | Model | Outcome | Verified claims |
+|---|---|---|---|
+| why do routers drop packets | gemma3:4b | answered | 3 of 3 |
+| why do routers drop packets | qwen2.5:7b-instruct | answered | 2 of 2 |
+| why do routers drop packets | qwen2.5:7b-instruct | answered | 1 of 1 |
+| explain the three way handshake | gemma3:4b | `NO_PASSAGES` at 0.574 | — |
+
+Citations resolved to `cs447 Lecture 4.pdf, slide 25` and `cs447 Lecture
+5.pdf, slide 10`. The abstention case never reached the model, and 0.574 is the
+figure §4 recorded for that query.
+
+**The model wrote passage ids into its prose on every run where the prose was
+inspected — three of three, across both models.** The instruction forbids it in
+as many words. This is §5a's recorded instruction-following weakness, and it is
+not an occasional lapse: it is what the default backend does. §5b was amended on
+this evidence, and the composed answer is now clean while the model's draft
+still contains the ids, which is exactly the split the amendment was for.
 
 **Two defects were found by running the command, and neither by the suite.**
 This is the third module in a row where that is true, which is why
@@ -999,29 +1066,32 @@ This is the third module in a row where that is true, which is why
 - A read timeout is a `TimeoutError` and not a `urllib.error.URLError`, so it
   escaped as a traceback rather than the `GenerationError` 5b requires. The
   suite was green throughout: it had no test that reached the transport.
-- The model wrote `(id: 2bf65592e5adecb9)` into the prose three times in one
-  answer, which the instruction forbids in as many words. This is 5a's recorded
-  instruction-following weakness arriving on the first query rather than in the
-  abstract, and it is now stripped deterministically — scoped to the ids in that
-  query's context, so it cannot scrub an unrelated hex string.
+- The prose defects above, which produced the §5b amendment rather than a
+  patch. The first attempt *was* a patch — a cleanup rule for the ids — and it
+  survived one commit before the dangling references it left behind showed that
+  the class of problem was not cleanable.
 
-**Two runs of the same query at temperature 0 produced slightly different claim
-text**, differing by leading discourse markers ("Specifically," and
-"Additionally,"). The citations, the claim count and the verification outcome
-were identical. Recorded because §6 depends on before-and-after comparisons
-being comparable, and this is the first evidence that the local path is not
-bit-reproducible even with sampling off. Whether that variation is large enough
-to move a metric is unmeasured.
+**Output varies between runs of the same query at temperature 0.** Two runs on
+`gemma3:4b` with identical code and prompt produced the same citations, claim
+count and verification outcome, and differed in the claims' leading discourse
+markers. The two `qwen2.5:7b-instruct` runs differed more — two verified claims
+and then one — but they are **not** evidence of the same thing, because the
+prompt changed between them by one instruction line. Recorded with that
+distinction because §6 depends on before-and-after comparisons being
+comparable, and conflating a confounded difference with a clean one is how a
+harness starts reporting noise.
 
 **What is deliberately absent.** No grounding rate, no abstention rates, no
-local-versus-hosted delta, no answer quality of any kind. One query is not a
+local-versus-hosted delta, no answer quality of any kind. Four runs are not a
 measurement, in the same sense that §4's fourteen queries were not a
 calibration, and the two thresholds this module adds — the minimum verified
 claim count and the n-gram length — ship uncalibrated for the reason §4e gives.
 
-**§5a's hosted provider is still unnamed**, so `hosted-gen` does not exist and
-`make_generator("hosted")` refuses rather than choosing one. That is the one
-part of §5e not built, and it is a decision rather than an omission.
+**The hosted implementation is deferred to the end of the project**, so
+`hosted-gen` does not exist and `make_generator("hosted")` refuses rather than
+choosing a provider. That is the one part of §5e not built, and it is a
+deferral with a trigger rather than an omission — but it means §6 will report
+the local path alone, with no delta, which §5a now says outright.
 
 ---
 
@@ -1065,6 +1135,15 @@ README covering architecture, evaluation results with real numbers, known
 limitations, and a short "how this was built" note: agentic-coding-assisted,
 human-reviewed, tested, with decisions made deliberately rather than defaulted
 to.
+
+**Carried here from §5a: decide the hosted generator before this module ships.**
+§5a deferred the second `Generator` implementation to the end of the project
+with the trigger written down, and this is that trigger. Two free providers
+needing no payment method were checked and recorded there. Landing one means
+re-running §6 to produce the local-versus-hosted delta §5a describes; not
+landing one means the README states that the delta was never measured, rather
+than leaving §5a's description of it standing as though it had been. Either is
+honest; silently doing neither is not.
 
 Options and reasoning: _to be filled in._
 

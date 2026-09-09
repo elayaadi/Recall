@@ -14,9 +14,11 @@ Ollama is reached over plain HTTP with the standard library rather than through
 a client package. It is one POST to localhost, and the repo already prefers a
 dependency it can see the whole of — the same reasoning 3b applied to storage.
 
-The hosted implementation is not written yet: SPEC.md 5a settled that there is
-one, behind this protocol, but did not name the provider. It lands when that is
-picked, and adds nothing to this module beyond another class.
+The hosted implementation is deferred to the end of the project — SPEC.md 5a
+records the deferral and 8 carries the trigger. It adds nothing to this module
+beyond another class, so the shape here does not change when it lands. Until it
+does, module 6 measures the local path alone and reports no delta, which 5a
+states outright rather than leaving its description of one standing.
 """
 
 from __future__ import annotations
@@ -181,8 +183,9 @@ def make_generator(
 ) -> Generator:
     if kind != LOCAL:
         raise ValueError(
-            f"unknown generator {kind!r}. The hosted implementation is settled in "
-            f"SPEC.md 5a but its provider is not named yet, so only {LOCAL!r} exists."
+            f"unknown generator {kind!r}. The hosted implementation is deferred to "
+            f"the end of the project (SPEC.md 5a, trigger in 8), so only "
+            f"{LOCAL!r} exists."
         )
     return LocalGenerator(model or LOCAL_MODEL, timeout=timeout)
 
