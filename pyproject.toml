@@ -3,6 +3,8 @@ name = "recall"
 version = "0.1.0"
 description = "RAG over personal course notes, with a hand-built evaluation harness."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "pdfplumber>=0.11",

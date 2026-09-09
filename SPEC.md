@@ -409,6 +409,11 @@ corpus profile, the measured ingestion table in §2, and the 44% title-heuristic
 figure in §2a. The private corpus stays usable locally — the pipeline takes a
 directory argument and hard-codes nothing.
 
+**Licensing.** The code is MIT (`LICENSE`). The corpus is not: OCW material is
+CC BY-NC-SA, stays under `data/` with its own attribution and licence note, and
+is never relicensed by this repo. Derived artefacts stay gitignored, since a
+chunked derivative of CC BY-NC-SA source would inherit the share-alike term.
+
 Rejected: **keeping the corpus private permanently and shipping only synthetic
 fixtures** — zero exposure and no re-labelling, but the evaluation numbers
 become unverifiable claims, which defeats the point of measuring them at all.

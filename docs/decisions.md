@@ -60,6 +60,18 @@ options rejected and why, is in the linked [SPEC.md](../SPEC.md) section.
   gold labels are hand-written and corpus-bound, so the swap is free before
   module 6 and expensive after it — §8a.
 
+- **2026-09-09 — Licence: MIT for the code.** Permissive, one file, and it
+  forecloses nothing downstream — the same reasoning that ruled out an AGPL
+  dependency in §2a, applied to what this project imposes on anyone reusing it.
+  Recorded in `LICENSE` and as `license = "MIT"` in `pyproject.toml`, so the
+  built wheel carries `License-Expression: MIT`.
+
+  The corpus is licensed separately and is not the project's to relicense: MIT
+  OpenCourseWare material is CC BY-NC-SA. When it lands it carries its own
+  attribution and licence note under `data/`, and derived artefacts such as
+  `data/chunks.jsonl` stay gitignored — a chunked derivative would inherit the
+  share-alike term.
+
 ## Reversals and corrections
 
 Kept visible rather than edited away, because the reasoning is the point.
