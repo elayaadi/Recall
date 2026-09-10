@@ -8,9 +8,10 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 measured against the real corpus, and module 3 with it — the index is decided,
 implemented, tested, and built against that corpus, and module 4 with it —
 retrieval is decided, implemented, tested, and run against the real index.
-Modules 6 and 7 are done: the question set is written, the harness runs and its
-numbers are in §6, and the HTTP API is built and exercised against the real
-index. Module 8 is what remains — its §8a is done, its README is not.
+All eight modules are done. Each was decided by comparing real alternatives,
+implemented, tested, and measured against the corpus that ships — and where
+later evidence contradicted an earlier decision, the reversal is recorded rather
+than the record quietly revised.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -952,6 +953,15 @@ hosted option. What differs is behaviour.
 implementation is local, through Ollama. A hosted implementation is written to
 the same protocol, and module 6 reports the delta between them.
 
+**Closed 2026-09-10: the hosted implementation was never built, and the delta
+this section describes was never measured.** §8's trigger fired and the decision
+was to record that rather than to land a provider. The `Generator` protocol
+stands and a second backend can be added without rework, but nothing in this
+repo compares local generation against hosted generation, and no sentence
+elsewhere should read as though something does. The paragraphs below are kept in
+their original form because the reasoning was real; what changed is the outcome,
+recorded here rather than by editing them.
+
 **Amended 2026-09-09: the hosted implementation is deferred to the end of the
 project, and the consequence is stated rather than left implicit.** The protocol
 is built; the second implementation behind it is not. This is the shape §4c used
@@ -1652,23 +1662,62 @@ It is a known gap rather than a verified property.
 
 ---
 
-## 8. Docs and publication — **8a decided; README pending**
+## 8. Docs and publication — **done: decided, implemented, tested, verified**
 
 README covering architecture, evaluation results with real numbers, known
 limitations, and a short "how this was built" note: agentic-coding-assisted,
 human-reviewed, tested, with decisions made deliberately rather than defaulted
 to.
 
-**Carried here from §5a: decide the hosted generator before this module ships.**
-§5a deferred the second `Generator` implementation to the end of the project
-with the trigger written down, and this is that trigger. Two free providers
-needing no payment method were checked and recorded there. Landing one means
-re-running §6 to produce the local-versus-hosted delta §5a describes; not
-landing one means the README states that the delta was never measured, rather
-than leaving §5a's description of it standing as though it had been. Either is
-honest; silently doing neither is not.
+### 8b. The hosted generator — decided: not built, and the delta recorded as unmeasured
 
-Options and reasoning: _to be filled in._
+§5a deferred the second `Generator` implementation to this module with the
+trigger written down. The trigger fired here, and the decision is to **land
+nothing and say so**.
+
+Two free providers needing no payment method were checked and are recorded in
+§5a, so this is a choice rather than an absence of options. What decided it is
+where the cost actually sits: the expensive half of the comparison is the
+*local* run, not the hosted one. Generation on the local model is minutes per
+question on CPU — hours across the 35-question set — which is precisely why §6
+reports no answer-level figures today. A hosted backend would make the hosted
+half cheap and leave the half that costs hours exactly as expensive. And §5's
+own measurement showed the local path is not reproducible run to run even at
+temperature 0, so the delta bought by those hours would carry noise the set is
+too small to average out.
+
+So: **the local-versus-hosted delta §5a describes was never measured.** §5a is
+amended to say so in its own words rather than leaving its description standing,
+and the README states it plainly. The protocol remains, so adding a backend
+later is additive.
+
+Rejected: **landing a provider and measuring both sides** — it produces the
+number §5a promised, at hours of CPU for a figure §5 already showed to be noisy.
+Rejected: **landing one and scoring only the hosted side** — cheap, and it would
+give §0's grounded-answer promise some measured backing, but a one-sided
+grounding rate is not a delta and a README reporting one invites exactly the
+reading §5a wanted to avoid.
+
+### 8c. Reproducibility — `scripts/fetch_corpus.py`
+
+§8a's argument for swapping the corpus was that *"numbers computed over files
+nobody else can obtain are assertions rather than evidence"*, and it promised
+that with a public corpus the ingest and eval harness "run anywhere and the
+numbers reproduce". **That was untrue until this module.** `data/raw/` is
+gitignored — the corpus is not this project's to redistribute — so a fresh clone
+received an empty directory and no way to fill it. Every measurement in the repo
+was reproducible in principle and not in practice.
+
+This is the second time §8a promised reproducibility the repo did not deliver;
+the corpus profile was the first, fixed in §2 by writing the command that
+regenerates it. Both had the same shape: a claim about what someone else could
+do, never tested by doing it.
+
+`scripts/fetch_corpus.py` downloads the 23 lecture decks and 9 problem sets from
+OCW and renders the syllabus from the course's syllabus page, because OCW
+publishes syllabi as HTML. It verifies what it got and **fails loudly** on a
+short corpus rather than leaving a partial one, since a missing file silently
+changes every number downstream.
 
 ### 8a. Publication corpus — decided: build on the real notes, publish on MIT OCW
 
@@ -1721,3 +1770,29 @@ Rejected for v1: **maintaining both corpora with two eval sets** — the most
 rigorous option, but it doubles the hand labelling, the one step no tooling
 makes cheaper. Reasonable to add once the
 public set exists.
+
+### Measured result
+
+**The corpus reproduces from a clone, verified rather than claimed.** Running
+`scripts/fetch_corpus.py` into an empty directory and ingesting the result:
+
+| | committed run | fresh fetch |
+|---|---|---|
+| chunks | 649 | 649 |
+| chunk-id fingerprint | `b5b3d4502cb94866` | `b5b3d4502cb94866` |
+
+Identical. Every figure in this document is now reachable by someone starting
+from nothing, which is what §8a argued for and what the repo could not do until
+this module.
+
+The README reports the §6 numbers, the per-format breakdown, and a section of
+what those numbers say that is not flattering — the abstention recall of 0.556
+and its overlapping score bands, recall@20 equalling recall@5, the two-question
+syllabus row, the absent answer-level metrics, and the local-versus-hosted
+comparison that was never run.
+
+**Tests: 280 passing, 2 deselected.** The fetch script's parsing and its
+verification are tested offline; the download is not, since testing it would
+mean asserting that a website has not changed, which is the thing the script
+already fails loudly about.
+

@@ -363,6 +363,28 @@ not a position.
   `data/chunks.jsonl` stay gitignored — a chunked derivative would inherit the
   share-alike term.
 
+- **2026-09-10 — The hosted generator was never built, and the delta §5a
+  described is recorded as unmeasured.** §5a deferred it here with the trigger
+  written down; the trigger fired and the answer was to land nothing and say so.
+  Two free no-card providers were checked and recorded, so this is a choice. What
+  decided it is where the cost sits: the expensive half of the comparison is the
+  *local* run — minutes per question on CPU, hours across the set, which is why
+  §6 reports no answer-level figures — and a hosted backend leaves that half
+  exactly as expensive. §5 also measured that the local path is not reproducible
+  run to run at temperature 0, so the delta would carry noise the set is too
+  small to average out. §5a is amended in its own words; the README says it
+  plainly — §8b.
+
+- **2026-09-10 — `scripts/fetch_corpus.py`, because §8a's reproducibility
+  promise was not true.** §8a argued that numbers over files nobody else can
+  obtain are assertions rather than evidence, and promised the harness would
+  "run anywhere". `data/raw/` is gitignored, so a fresh clone got an empty
+  directory and no way to fill it. Verified by fetching into an empty directory
+  and re-ingesting: 649 chunks and the identical chunk-id fingerprint
+  `b5b3d4502cb94866`. The second time §8a promised reproducibility the repo did
+  not deliver — the corpus profile was the first — and both had the same shape: a
+  claim about what someone else could do, never tested by doing it — §8c.
+
 ## Reversals and corrections
 
 Kept visible rather than edited away, because the reasoning is the point.
