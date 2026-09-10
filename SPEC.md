@@ -8,9 +8,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 measured against the real corpus, and module 3 with it — the index is decided,
 implemented, tested, and built against that corpus, and module 4 with it —
 retrieval is decided, implemented, tested, and run against the real index.
-Module 5 is decided, implemented and tested, and deliberately not
-measured — its numbers come from module 6. Modules 6–8 are `decision pending`,
-except §8a (publication corpus), settled early because it constrains §6.
+Module 6 is done: the question set is written, the harness runs, and the first
+real retrieval numbers are recorded in §6. Modules 7–8 are `decision pending`;
+§8a (publication corpus) is done.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -1246,7 +1246,7 @@ the local path alone, with no delta, which §5a now says outright.
 
 ---
 
-## 6. Evaluation — **decided; question set written, harness in progress**
+## 6. Evaluation — **done: decided, implemented, tested, measured**
 
 A hand-written question set, scored with real metrics, run before and after any
 tuning. This is where every deferral in §2–§5 comes due.
@@ -1361,6 +1361,130 @@ chunks and both count.
 
 Still to build: `metrics.py`, `harness.py` and `compare.py`, then the baseline
 run and the calibration of the four uncalibrated thresholds.
+
+
+### Measured result
+
+The first real numbers this project has produced. `uv run python eval/harness.py`
+over the 35-question set and the 649-chunk corpus, at the calibrated θ.
+
+| | |
+|---|---|
+| recall@1 | 0.558 |
+| **recall@5** | **0.923** |
+| recall@20 | 0.923 |
+| MAP | 0.728 |
+| abstention precision / recall | 1.000 / 0.556 |
+| tests | 258 passing, 2 deselected |
+
+Per format, which 6b required be reported beside the headline precisely so a
+weak branch cannot hide inside it:
+
+| format | n | recall@5 | MAP |
+|---|---|---|---|
+| deck | 17 | 0.941 | 0.672 |
+| problem_sheet | 7 | 1.000 | 1.000 |
+| **syllabus** | **2** | **0.500** | **0.250** |
+
+**§4c's reranker trigger does not fire, and the answer is unambiguous.** §4c
+wrote the condition down in advance: adopt a reranker when recall@20 is
+materially above recall@5. They are **identical** — checked directly, no
+relevant chunk sits at ranks 6–20 for any question. A relevant chunk is either
+in the top 5 or not retrieved at all within 20, so there is no headroom for
+reranking to recover. §4c also said what that implies: the problem is upstream
+in chunking or embedding. **No reranker in v1, on the measurement rather than
+on the deferral.**
+
+#### θ is calibrated, and §4b's evidence for it did not survive
+
+§4b set θ from eight probe queries that separated cleanly — answerable at or
+above 0.666, absent at or below 0.594, an empty gap of 0.072 — while saying in
+the same breath that eight queries are not a calibration. The 35-question set
+says they were not:
+
+| | answerable | unanswerable |
+|---|---|---|
+| min top-1 | 0.625 | 0.550 |
+| median | 0.749 | 0.610 |
+| max | 0.834 | 0.750 |
+
+**The bands overlap. 4 of the 9 unanswerable questions score at or above the
+lowest answerable one**, so no threshold separates them and every choice of θ
+trades one error for the other:
+
+| θ | recall@5 | MAP | abstention P | abstention R | false refusals |
+|---|---|---|---|---|---|
+| 0.60 | 0.923 | 0.728 | 1.000 | 0.444 | 0 |
+| **0.62** | **0.923** | **0.728** | **1.000** | **0.556** | **0** |
+| 0.63 (old) | 0.885 | 0.708 | 0.833 | 0.556 | 1 |
+| 0.66 | 0.846 | 0.689 | 0.750 | 0.667 | 2 |
+| 0.70 | 0.731 | 0.612 | 0.571 | 0.889 | 6 |
+
+**θ = 0.62** is the highest threshold that refuses no answerable question. It
+catches 5 of 9 unanswerable ones. Catching a sixth costs two real answers, and
+catching eight costs six. **Abstention recall of 0.556 is the honest headline
+figure**: on this corpus and this embedder, four unanswerable questions out of
+nine are answered anyway, and that is a property of the score overlap rather
+than of the threshold.
+
+#### The collapse threshold was swept and deliberately not tuned
+
+Every value from 0.90 to 0.99 scores identically. Switching collapse **off**
+raises recall@5 from 0.923 to 0.962 — and it is not an improvement. Traced to a
+single question: *"Is convolution commutative?"* The identical *Properties of
+Convolution* slide appears in both lecture 10 and lecture 11; §4d collapses them,
+keeps the lecture 10 copy, and merges lecture 11's location into its citations.
+The reader gets the right passage cited to both lectures. The metric scores it 0
+because it compares chunk **ids** and the gold label anchors to the lecture 11
+copy.
+
+That is the metric under-crediting §4d, not §4d costing quality, so the
+threshold stays at 0.95. **The reported recall understates the system by exactly
+this one question.** Fixing it properly means a collapsed hit reporting the
+chunk ids it absorbed, which `Duplicate` does not currently carry — recorded as
+a known limitation rather than worked around by tuning a threshold to a
+measurement artefact.
+
+#### What the syllabus figure is
+
+recall@5 of 0.500 over two questions is one question right and one wrong, and
+the two failures are different:
+
+- *"How much of the final grade do the problem sets carry?"* — the gold chunk
+  ranks **2nd**. It failed at θ=0.63 purely because its top-1 scored 0.625, and
+  it passes at the calibrated 0.62. A threshold artefact.
+- *"Do the problem sets require programming?"* — the gold chunk ranks **77th**.
+  A genuine retrieval miss, and the only one in the set.
+
+Two questions is not a measurement of the syllabus branch. It is one file and
+five chunks; 6b's stratification gives it the coverage its share of the corpus
+earns and no more, and the breakdown exists so that this is visible rather than
+averaged away.
+
+#### A defect in the harness, found by reading its output
+
+The first baseline reported recall@20 exactly equal to recall@5, which is what
+a metric looks like when it cannot vary: the harness retrieved `k=5` results and
+then measured recall@20 over that same five-item list, so §4c's trigger could
+not have fired whatever the data said. Ranking is now measured at depth 20 while
+`k` still governs what the system returns. The corrected numbers are unchanged —
+they were right for the wrong reason — but the trigger is now actually testable,
+and the verdict above is a measurement instead of an artefact.
+
+#### What is not measured
+
+No answer-level figures. 6a decided grounding rate, citation validity and the
+outcome mix are reported, and `harness.py --answers` computes them, but
+generation on the local model takes minutes per question on CPU — hours for the
+set, which is not a command to run while sweeping a threshold. `citation_correctness`
+is `—` in every run record here for that reason, not because it is unimplemented.
+
+**Every figure above is in-sample.** The four thresholds were calibrated on the
+same 35 questions the scores are reported over, which 6c settled deliberately: a
+held-out split of a set this size leaves too few points to calibrate against.
+Each run record carries that caveat in its own `caveat` field, so a number
+cannot travel without it.
+
 
 ---
 

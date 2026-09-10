@@ -61,6 +61,10 @@ uv run recall-search "why do routers drop packets"   # query the index by hand
 uv run recall-search "..." --lexical              # the BM25 baseline (SPEC.md §4a)
 uv run recall-answer "why do routers drop packets"   # retrieve, then answer with citations
 uv run recall-answer "..." --show-prompt          # the assembled prompt, no model call
+uv run python eval/harness.py                    # score the question set, write a run record
+uv run python eval/calibrate.py                  # sweep theta against the question set
+uv run python eval/compare.py A.json B.json      # diff two run records
+uv run python scripts/profile_corpus.py data/raw > docs/corpus-profile.md
 uv run pytest -q                                 # no corpus, no model, no network
 uv run pytest -q -m slow                         # the tests that need the model
 ```
@@ -104,9 +108,13 @@ docs/         decision record, corpus profile, architecture notes
   model's own judgement, `unverified` is §5c's check failing. `failed` is a
   fourth outcome and is not an abstention — it means the model's output could
   not be used. Never collapse them into a boolean; §6 scores them separately.
-- Retrieval's two thresholds are **uncalibrated** and are constructor
-  arguments, not constants. Module 6 sets them; the §8a corpus swap resets
-  them. Never hard-code either at a call site.
+- Retrieval's two thresholds are constructor arguments, never constants. θ is
+  now **calibrated** (0.62, module 6); the collapse threshold was swept and
+  left at 0.95 deliberately — see §6. Both die at any embedder or corpus
+  change, so recalibrate rather than assuming they carry over.
+- Reported eval figures are **in-sample**: the thresholds were calibrated on
+  the same 35 questions the scores come from. Every run record says so in its
+  own `caveat` field. Do not quote a number without it.
 - Before calling a low retrieval score a miss, check the term is in the corpus
   at all. Twice in module 4 an absent term was nearly recorded as a retrieval
   failure — `grep` the chunks first.

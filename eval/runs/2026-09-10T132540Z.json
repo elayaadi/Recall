@@ -1,0 +1,68 @@
+{
+  "run_id": "2026-09-10T13:25:40Z",
+  "corpus": {
+    "files": 33,
+    "chunks": 649,
+    "chunk_id_sha256": "b5b3d4502cb94866"
+  },
+  "questions": {
+    "file": "eval/questions/questions.toml",
+    "count": 35
+  },
+  "config": {
+    "chunker": [
+      "structural"
+    ],
+    "embedder": "bge-base-en-v1.5",
+    "retriever": {
+      "k": 5,
+      "abstain": 0.63,
+      "collapse": 0.95
+    },
+    "generation": null
+  },
+  "metrics": {
+    "questions": 35,
+    "recall": {
+      "@1": 0.5576923076923077,
+      "@5": 0.8846153846153846,
+      "@20": 0.8846153846153846
+    },
+    "map": 0.7083333333333334,
+    "abstention": {
+      "precision": 0.8333333333333334,
+      "recall": 0.5555555555555556,
+      "tp": 5,
+      "fp": 1,
+      "fn": 4,
+      "tn": 25
+    },
+    "citation_correctness": null,
+    "outcomes": {},
+    "by_format": {
+      "deck": {
+        "questions": 17,
+        "recall@1": 0.4411764705882353,
+        "recall@5": 0.9411764705882353,
+        "recall@20": 0.9411764705882353,
+        "map": 0.6715686274509803
+      },
+      "problem_sheet": {
+        "questions": 7,
+        "recall@1": 1.0,
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "map": 1.0
+      },
+      "syllabus": {
+        "questions": 2,
+        "recall@1": 0.0,
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "map": 0.0
+      }
+    }
+  },
+  "caveat": "in-sample: thresholds are calibrated on this same question set",
+  "label": "baseline: uncalibrated thresholds"
+}

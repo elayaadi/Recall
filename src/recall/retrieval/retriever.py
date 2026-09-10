@@ -17,12 +17,24 @@ from dataclasses import dataclass
 from ..indexing.store import SearchHit, VectorStore
 from .collapse import collapse_near_duplicates
 
-# Placeholder, sitting in the empty band the §4 probe measured between
-# answerable queries (>= 0.666) and absent ones (<= 0.594). It is a starting
-# value to be replaced by a measured one, not a tuned parameter.
-UNCALIBRATED_ABSTAIN = 0.63
+# Calibrated in module 6 against the 35-question set, replacing the placeholder
+# 0.63 that §4's eight-query probe suggested. 0.62 is the highest threshold at
+# which no answerable question is refused: it holds abstention precision at
+# 1.000 while catching 5 of the 9 unanswerable questions. Raising it to 0.66
+# catches one more and costs two real answers.
+#
+# The §4 probe's clean 0.072 gap did not survive the larger set — see §4b.
+# This value is a property of the embedder and the corpus, so it is still a
+# constructor argument and still dies at any embedder or corpus change.
+CALIBRATED_ABSTAIN = 0.62
+UNCALIBRATED_ABSTAIN = CALIBRATED_ABSTAIN  # name kept; call sites unchanged
 
-# Placeholder. The index holds 58 entry pairs at or above this similarity.
+# Swept in module 6 over 0.90-1.01 and left where it was. Every value that
+# collapses anything scores identically; only switching collapse off entirely
+# moves the number, and it moves it *up* — because the metric compares chunk
+# ids and a collapsed hit carries its twin's location rather than its id. That
+# is the metric under-crediting §4d, not §4d costing quality, so the threshold
+# is not tuned to it. Recorded in §6's measured result.
 UNCALIBRATED_COLLAPSE = 0.95
 
 # Collapsing shortens the list, so more is fetched than returned. 4 is a guess

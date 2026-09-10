@@ -242,6 +242,54 @@ afterwards. Each entry says which part is unmeasured.
   published install command later — §5e.
 
 
+## Evaluation — module 6
+
+The module that pays off every deferral in §2–§5. Each entry is a measurement,
+not a position.
+
+- **2026-09-10 — Metrics: Recall@k, MAP, abstention precision/recall, plus
+  answer-level figures.** §2c's labels are binary and possibly multi-target, so
+  nDCG was rejected for needing graded relevance this project does not have, and
+  MRR for reading only the first relevant result and discarding exactly the
+  multi-match information §2c chose to keep — §6a.
+
+- **2026-09-10 — θ calibrated to 0.62, and §4b's evidence for 0.63 did not
+  survive the larger set.** §4's eight-query probe found an empty gap of 0.072
+  between answerable and absent queries. Over 35 questions the bands **overlap**:
+  4 of 9 unanswerable score at or above the lowest answerable, so no threshold
+  separates them. 0.62 is the highest θ that refuses no answerable question,
+  catching 5 of 9 unanswerable. Abstention recall of 0.556 is the honest figure
+  and is a property of the overlap, not of the threshold — §4b, §6.
+
+- **2026-09-10 — No reranker in v1, now on the measurement rather than the
+  deferral.** §4c wrote the trigger down in advance: adopt one when recall@20 is
+  materially above recall@5. They are identical, and no relevant chunk sits at
+  ranks 6–20 for any question — there is no headroom a reranker could recover.
+  §4c also said what that implies: the problem is upstream — §4c, §6.
+
+- **2026-09-10 — The collapse threshold was swept and deliberately left alone.**
+  Turning collapse off raises recall@5 from 0.923 to 0.962, traced to one
+  question where §4d correctly merges an identical slide appearing in two
+  lectures and the metric scores it 0 for comparing chunk ids. Tuning the
+  threshold to that would be tuning to a measurement artefact. Recorded as the
+  metric under-crediting §4d, with the fix — a collapsed hit reporting the ids
+  it absorbed — named rather than made — §4d, §6.
+
+- **2026-09-10 — Run records are committed JSON carrying their full
+  configuration, and reported figures are in-sample.** A score without the
+  thresholds, chunker, embedder and corpus that produced it cannot be compared
+  to anything; `compare.py` refuses to compare quietly and says when the corpus
+  changed underneath. A held-out split of 35 questions leaves too few points to
+  calibrate against, so every run record carries an in-sample caveat in its own
+  field — §6c.
+
+- **2026-09-10 — A harness defect found by reading its output.** The first
+  baseline reported recall@20 exactly equal to recall@5 because the harness
+  retrieved 5 results and measured @20 over that same list, so §4c's trigger
+  could not fire whatever the data said. Ranking is now scored at depth 20 while
+  `k` governs what the system returns. The fourth time in this project that
+  reading real output caught what a green suite did not — §6.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT
