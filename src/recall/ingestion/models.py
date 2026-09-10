@@ -48,7 +48,8 @@ class Locator:
             return f'{label} — "{self.title}"' if self.title else label
         if self.kind == PROBLEM_SHEET:
             parts = f"({', '.join(self.parts)})" if self.parts else ""
-            return f"p.{pages}, problem {self.problem}{parts}"
+            label = "p." if len(self.pages) == 1 else "pp."
+            return f"{label}{pages}, problem {self.problem}{parts}"
         if self.kind == SYLLABUS:
             return f"p.{pages} — {self.title}" if self.title else f"p.{pages}"
         return f"p.{pages}" if len(self.pages) == 1 else f"pp.{pages}"

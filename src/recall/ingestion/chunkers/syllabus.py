@@ -12,9 +12,15 @@ from ..boilerplate import strip_boilerplate
 from ..models import STRUCTURAL, SYLLABUS, Chunk, Locator
 from ..pdf import Document
 from ..structure import all_caps_headings
+from .bound import UNCALIBRATED_MAX_CHARS, bounded_blocks
 
 
-def chunk_syllabus(document: Document, boilerplate: frozenset[str]) -> list[Chunk]:
+def chunk_syllabus(
+    document: Document,
+    boilerplate: frozenset[str],
+    *,
+    max_chars: int = UNCALIBRATED_MAX_CHARS,
+) -> list[Chunk]:
     located: list[tuple[int, str]] = []
     for page in document.pages:
         if not page.has_text:
@@ -37,21 +43,24 @@ def chunk_syllabus(document: Document, boilerplate: frozenset[str]) -> list[Chun
 
     chunks: list[Chunk] = []
     for start, end, title in sections:
-        block = lines[start:end] if title is None else lines[start + 1 : end]
-        body = "\n".join(block).strip()
-        if not body:
-            continue
-        page = located[start][0]
-        prefix = f"{document.path.stem} — {title}" if title else document.path.stem
-        chunks.append(
-            Chunk.make(
-                source_file=document.name,
-                source_sha256=document.sha256,
-                doc_type=SYLLABUS,
-                chunker=STRUCTURAL,
-                locator=Locator(kind=SYLLABUS, pages=(page,), title=title),
-                text=f"{prefix}\n\n{body}".strip(),
-                raw_text=body,
+        span = located[start:end] if title is None else located[start + 1 : end]
+        # §2b amended: a long section is split rather than silently truncated
+        # at embed time. A syllabus section that fits is untouched.
+        for piece in bounded_blocks(span, max_chars=max_chars):
+            body = "\n".join(line for _, line in piece).strip()
+            if not body:
+                continue
+            pages = tuple(dict.fromkeys(p for p, _ in piece))
+            prefix = f"{document.path.stem} — {title}" if title else document.path.stem
+            chunks.append(
+                Chunk.make(
+                    source_file=document.name,
+                    source_sha256=document.sha256,
+                    doc_type=SYLLABUS,
+                    chunker=STRUCTURAL,
+                    locator=Locator(kind=SYLLABUS, pages=pages, title=title),
+                    text=f"{prefix}\n\n{body}".strip(),
+                    raw_text=body,
+                )
             )
-        )
     return chunks

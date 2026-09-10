@@ -12,6 +12,7 @@ from ..boilerplate import strip_boilerplate
 from ..models import DECK, STRUCTURAL, Chunk, Locator
 from ..pdf import Document, Page
 from ..structure import comparable, normalise_title
+from .bound import UNCALIBRATED_MAX_CHARS, bounded_blocks
 
 DEFAULT_MAX_WORDS = 1200  # guard only; the longest real run is 9 slides, ~800 words
 
@@ -35,6 +36,7 @@ def chunk_deck(
     boilerplate: frozenset[str],
     *,
     max_words: int = DEFAULT_MAX_WORDS,
+    max_chars: int = UNCALIBRATED_MAX_CHARS,
 ) -> list[Chunk]:
     slides: list[tuple[Page, str | None, list[str]]] = []
     for page in document.pages:
@@ -60,27 +62,47 @@ def chunk_deck(
                     break
                 run.append(slides[index + 1])
                 index += 1
-        chunk = _build(document, run, title)
-        # A divider slide carrying only a title over a diagram has nothing to
-        # retrieve. Dropped here and reported by the pipeline as an uncovered
-        # page, rather than indexed as a chunk that can match a query and then
-        # answer nothing.
-        if chunk.raw_text.strip():
-            chunks.append(chunk)
+        for chunk in _build(document, run, title, max_chars):
+            # A divider slide carrying only a title over a diagram has nothing
+            # to retrieve. Dropped here and reported by the pipeline as an
+            # uncovered page, rather than indexed as a chunk that can match a
+            # query and then answer nothing.
+            if chunk.raw_text.strip():
+                chunks.append(chunk)
         index += 1
     return chunks
 
 
-def _build(document: Document, run: list[tuple[Page, str | None, list[str]]], title: str | None) -> Chunk:
-    pages = tuple(page.number for page, _, _ in run)
-    body = "\n".join(line for _, _, lines in run for line in lines)
+def _build(
+    document: Document,
+    run: list[tuple[Page, str | None, list[str]]],
+    title: str | None,
+    max_chars: int,
+) -> list[Chunk]:
+    """One chunk per slide run — or more, if the run exceeds the window.
+
+    §2b amended. A dense slide, or a merged run of same-titled slides, can pass
+    the embedder's 512-token window, past which its text is not represented at
+    all. Every piece keeps the run's title, so the topic prefix that makes a
+    bare bullet retrievable survives the split.
+    """
+    located = [(page.number, line) for page, _, lines in run for line in lines]
     prefix = f"{document.path.stem} — {title}" if title else document.path.stem
-    return Chunk.make(
-        source_file=document.name,
-        source_sha256=document.sha256,
-        doc_type=DECK,
-        chunker=STRUCTURAL,
-        locator=Locator(kind=DECK, pages=pages, title=title),
-        text=f"{prefix}\n\n{body}".strip(),
-        raw_text=body.strip(),
-    )
+    out: list[Chunk] = []
+    for piece in bounded_blocks(located, max_chars=max_chars) or [[]]:
+        body = "\n".join(line for _, line in piece)
+        pages = tuple(dict.fromkeys(p for p, _ in piece)) or tuple(
+            page.number for page, _, _ in run
+        )
+        out.append(
+            Chunk.make(
+                source_file=document.name,
+                source_sha256=document.sha256,
+                doc_type=DECK,
+                chunker=STRUCTURAL,
+                locator=Locator(kind=DECK, pages=pages, title=title),
+                text=f"{prefix}\n\n{body}".strip(),
+                raw_text=body.strip(),
+            )
+        )
+    return out

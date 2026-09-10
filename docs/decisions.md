@@ -49,6 +49,17 @@ options rejected and why, is in the linked [SPEC.md](../SPEC.md) section.
   tuning does not mean re-labelling. A label matching zero chunks is a hard
   error that fails the run, never a silent score of 0 — §2c.
 
+- **2026-09-10 — §2b amended: chunks get a size bound, because the embedder
+  has one.** `bge-base-en-v1.5` truncates at 512 tokens silently; measured on
+  the §8a corpus, 29 of 471 chunks exceed it and **29% of all tokens are never
+  embedded**, the worst chunk having 9% of itself represented. §2b's rule that a
+  problem keeps its sub-parts holds at CS447's couple-hundred words and inverts
+  at 22,097 characters. Oversized chunks are split on internal structure first,
+  then windowed. A structural split alone was rejected on measurement: 19 of the
+  29 have no internal structure to split on. The bound is a constructor argument
+  with an uncalibrated default, per §4e, because it is a property of the
+  embedder and dies at any embedder change — §2b.
+
 ## Indexing — module 3
 
 - **2026-09-09 — Hand-built pipeline, not LangChain or LlamaIndex.** The

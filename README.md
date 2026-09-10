@@ -5,11 +5,12 @@ study notes and course materials — markdown, PDF, and PowerPoint — with
 citations back to the source passage, and a hand-built evaluation harness that
 measures retrieval quality with real numbers.
 
-**Status: in progress.** Ingestion, indexing and retrieval are built, tested,
-and measured against a real 578-page corpus. Generation is built and tested but
-not yet measured — the numbers come from the evaluation harness, which is not
-started. Architecture decisions are made one module at a time and recorded with
-the alternatives they beat.
+**Status: in progress.** Ingestion, indexing, retrieval and generation are
+built, tested, and measured against a 564-page corpus of MIT OpenCourseWare
+material that ships with the repo's instructions to fetch it. The evaluation
+harness is decided but not started, so no quality metric is claimed yet.
+Architecture decisions are made one module at a time and recorded with the
+alternatives they beat — including the ones later evidence overturned.
 
 - [docs/decisions.md](docs/decisions.md) — every architecture decision, plus the
   ones that were reversed or corrected on evidence

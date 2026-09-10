@@ -1,6 +1,10 @@
-# Personal notes and course materials — never committed
+# Course materials — never committed. data/raw/ holds the corpus; what is in
+# it and under what licence is recorded in data/CORPUS.md. Any other data/raw-*
+# directory is a local working copy and is ignored by the same rule, so removing
+# one from this file can never make it committable by accident.
 data/raw/*
 !data/raw/.gitkeep
+data/raw-*/
 
 # Generated indexes, embeddings, eval run outputs
 data/chunks*.jsonl
@@ -9,7 +13,6 @@ data/sample/*.pdf
 index/
 *.faiss
 *.npy
-eval/runs/
 
 # Local agent context — must never be committed
 CLAUDE.local.md
