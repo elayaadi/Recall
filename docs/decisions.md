@@ -290,6 +290,56 @@ not a position.
   `k` governs what the system returns. The fourth time in this project that
   reading real output caught what a green suite did not — §6.
 
+## API — module 7
+
+- **2026-09-10 — Framework: FastAPI, in an optional extra.** This repo
+  hand-built where it was cheap and instructive — numpy over FAISS (§3b), a
+  `urllib` Ollama client over a package (§5e) — and an HTTP server is where that
+  reasoning runs out: `http.server` documents itself as unfit for production and
+  hand-rolling concurrency teaches nothing about retrieval. What FastAPI buys
+  here specifically is validating §5d's four-outcome union **at the boundary**,
+  a generated OpenAPI document §8 owes anyway, and an async model that matters
+  because generation is minutes long. Starlette was the close call, rejected
+  because the outcome union is exactly the shape worth validating mechanically.
+  The dependency sits in an `api` extra, not the base install — §7a.
+
+- **2026-09-10 — A refusal is a 200, and only an unusable generator is a 5xx.**
+  The request was understood and processed; the answer is that the corpus does
+  not answer it. §5d's three refusals carry an `outcome` discriminator in the
+  body, and `failed` returns 502 so a client's retry logic can see a generator
+  outage as one. 404 was rejected for conflating "no such route" with "no
+  answer", leaving a client unable to tell a typo'd URL from an honest
+  refusal — §7b.
+
+- **2026-09-10 — No ingest endpoint, which narrows §7 as written.** That text
+  promised endpoints to ingest documents; a full ingest plus index is about
+  three minutes, and the alternatives are a job runner built for a corpus
+  rebuilt by one command. Recorded as a scope change rather than a quiet
+  omission — §7b.
+
+- **2026-09-10 — No streaming, inherited rather than chosen.** §5e made the
+  generator blocking because §5c needs the whole answer before it can verify
+  anything; streaming tokens would mean streaming unverified text, which is the
+  property §5c exists to provide — §7b.
+
+- **2026-09-10 — Deployment: local only, and this narrows §7c as written.**
+  Measured, `/answer` needs 5.1 GB of model resident and minutes of CPU per
+  request, which is not a free tier, and a 23-second cold start rules out
+  scale-to-zero regardless. A public `/search` alone would fit a small
+  always-on instance, at a running cost for an API whose headline endpoint
+  returns 501. §0 already caps this module at a minimal demo, and the property
+  §8a spent a corpus swap to protect — that anyone can clone and reproduce the
+  numbers — is served by a documented local run. §5a's hosted generator stays
+  parked until §8 — §7c.
+
+- **2026-09-10 — Running it found the app reporting healthy while unable to
+  serve.** `deps.py` claimed the embedder was loaded at startup; it is lazy by
+  design, so the 23-second cold start landed on the first request and a missing
+  `sentence-transformers` surfaced as a 500 to whoever asked first rather than
+  as a server that refused to start. The embedder is now forced to load at boot.
+  The fifth time in this project that reading real output caught what a green
+  suite did not — §7.
+
 ## Publication — module 8
 
 - **2026-09-09 — Corpus: build on the private notes, publish on MIT

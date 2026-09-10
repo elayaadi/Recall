@@ -20,17 +20,24 @@ local = ["sentence-transformers>=3.0"]
 # wanted a generator. The generation half lands when 5a's provider is named —
 # the local generator needs no package at all, only a running Ollama.
 hosted-embed = ["openai>=1.0"]
+# SPEC.md 7a: the largest dependency addition in this project, scoped to an
+# extra so `recall-search` stays installable without a web stack.
+api = ["fastapi>=0.115", "uvicorn>=0.30"]
 
 [project.scripts]
 recall-ingest = "recall.ingestion.pipeline:main"
 recall-index = "recall.indexing.build:main"
 recall-search = "recall.retrieval.search:main"
 recall-answer = "recall.generation.answer:main"
+recall-serve = "recall.api.app:main"
 
 [dependency-groups]
 dev = [
     "pytest>=8.0",
     "reportlab>=4.0",
+    "fastapi>=0.115",
+    # starlette's TestClient asks for httpx2; httpx raises a deprecation warning.
+    "httpx2>=0.28",
 ]
 
 [build-system]

@@ -65,6 +65,8 @@ uv run python eval/harness.py                    # score the question set, write
 uv run python eval/calibrate.py                  # sweep theta against the question set
 uv run python eval/compare.py A.json B.json      # diff two run records
 uv run python scripts/profile_corpus.py data/raw > docs/corpus-profile.md
+uv sync --extra api --extra local                # the web stack and the embedder
+uv run recall-serve                              # the HTTP API on :8000
 uv run pytest -q                                 # no corpus, no model, no network
 uv run pytest -q -m slow                         # the tests that need the model
 ```

@@ -8,9 +8,9 @@ hand-built evaluation harness that proves retrieval quality with real numbers.
 measured against the real corpus, and module 3 with it — the index is decided,
 implemented, tested, and built against that corpus, and module 4 with it —
 retrieval is decided, implemented, tested, and run against the real index.
-Module 6 is done: the question set is written, the harness runs, and the first
-real retrieval numbers are recorded in §6. Modules 7–8 are `decision pending`;
-§8a (publication corpus) is done.
+Modules 6 and 7 are done: the question set is written, the harness runs and its
+numbers are in §6, and the HTTP API is built and exercised against the real
+index. Module 8 is what remains — its §8a is done, its README is not.
 
 Each section is filled in as we settle it: the options considered, the choice,
 and the reasoning — including the alternatives that were rejected, so they are
@@ -1488,18 +1488,167 @@ cannot travel without it.
 
 ---
 
-## 7. API — **decision pending**
+## 7. API — **done: decided, implemented, tested, measured**
 
-Endpoints to ingest documents and query the system.
+An HTTP surface over the system modules 2–6 built and measured.
 
-Open decisions:
+**One measurement decided most of this section**, so it is stated before the
+decisions rather than inside them. What each request path needs resident, timed
+on the development machine:
 
-- **7a. Web framework.**
-- **7b. Surface** — endpoint shape, sync vs. async ingestion, error and
-  abstention responses, streaming or not.
-- **7c. Deployment** — where and how it is hosted publicly, and what that costs.
+| path | needs | latency |
+|---|---|---|
+| `/search` | index 6.2 MB + embedder 419 MB | 97 ms warm, 23 s cold |
+| `/answer` | the above + a 4.7 GB Ollama model | minutes per request on CPU |
 
-Options and reasoning: _to be filled in._
+Retrieval is cheap to serve. The answer path needs 5.1 GB of weights resident
+and minutes of CPU per request, which is not a free tier; and the 23-second cold
+start rules out scale-to-zero whatever the memory budget. Everything in §7c
+follows from those two facts.
+
+### 7a. Web framework — decided: FastAPI
+
+This repo hand-built where hand-building was cheap and taught something: the
+numpy store instead of FAISS (§3b), the Ollama client on `urllib` instead of a
+package (§5e). An HTTP server is where that reasoning runs out. Concurrency,
+timeouts and correct error responses are all things `http.server` would make us
+write by hand, none of them teaches anything about retrieval, and its own
+documentation says it is not for production.
+
+What FastAPI buys that is specific to this system rather than generic: response
+models validate §5d's four-outcome shape **at the boundary**, so a malformed
+outcome cannot leave the process; OpenAPI is generated rather than written, and
+§8 owes documentation; and the async model matters because generation is minutes
+long, where blocking a worker per request is the actual failure mode.
+
+Rejected: **Starlette** — the same async model and server at roughly a third of
+the dependency weight, with routing and JSON explicit in a way that matches how
+the rest of this repo reads. Rejected because request validation and the OpenAPI
+document become code to write and maintain, and the outcome union is exactly the
+shape worth validating mechanically. Rejected: **the standard library alone** —
+it keeps the dependency count at two and the "self-contained" claim literal, but
+it is hand-building where it costs rather than pays.
+
+**The dependency goes in an optional extra**, not the base install, so
+`recall-search` stays installable without a web stack. It is the largest
+dependency addition in the project's history and it is scoped accordingly.
+
+### 7b. Surface — decided: refusals are successful responses
+
+**A refusal is a correct result, not an error.** The request was understood and
+processed; the system's answer is that this corpus does not answer it. So §5d's
+three refusals return **200** with the outcome as a discriminator in the body,
+and only `failed` — the model unreachable or its output unusable — returns 5xx,
+because that genuinely is a server problem and a client's retry logic should be
+able to see it as one.
+
+```
+200  {"outcome": "answered",        "text": ..., "claims": [...]}
+200  {"outcome": "no_passages",     "reason": "best score 0.574 below 0.620"}
+200  {"outcome": "model_abstained", "reason": "the passages do not cover this"}
+200  {"outcome": "unverified",      "reason": "0 of 2 claims verified"}
+502  {"error": "failed", "detail": "could not reach Ollama at ..."}
+```
+
+Rejected: **404 when nothing is found.** It reads RESTfully and it conflates
+"no such route" with "this corpus has no answer", leaving a client unable to
+distinguish a typo'd URL from an honest refusal — which is the distinction §5d
+and CLAUDE.md both insist on preserving.
+
+**No ingest endpoint in v1, and this narrows §7 as originally written.** That
+text promised "endpoints to ingest documents"; a full ingest plus index is about
+three minutes, far past any reasonable request timeout, and the alternatives are
+a job runner and state store built for a corpus that is rebuilt by one command.
+Ingestion stays `recall-ingest` and `recall-index`. Recorded as a scope change
+rather than left as a quiet omission.
+
+**No streaming.** This is inherited rather than chosen: §5e made the generator
+blocking because §5c's check needs the whole answer before it can verify
+anything. Streaming tokens would mean streaming text that has not been verified,
+which is the property §5c exists to provide. Progress events remain available if
+§8's demo wants them, and they do not weaken verification.
+
+### 7c. Deployment — decided: local only, documented
+
+Nothing is hosted. The API runs on the reader's machine, documented in §8's
+README.
+
+The measurement above is the argument. A public `/answer` needs 5.1 GB resident
+and minutes of CPU per request; the only way to serve it at zero cost is a
+hosted generator, and §5a deliberately parked that until §8. A public
+`/search` alone would fit a small always-on instance, at a few dollars a month
+for an endpoint whose headline sibling is disabled.
+
+**This narrows §7c as written**, which asked where the system is "hosted
+publicly". It is not. §0 already caps this module at "a minimal demo", and the
+property §8a spent a corpus swap to protect — that anyone can clone the repo and
+reproduce the numbers — is served by a documented local run rather than by a
+deployment.
+
+Rejected: **retrieval-only public** — 97 ms warm over a 6.2 MB index is a
+genuinely good demo and matches the half module 6 measured; rejected for the
+running cost and for shipping an API whose main endpoint returns 501. Rejected:
+**full public with a hosted generator** — it would make §5a's local-versus-hosted
+delta measurable, which §6 had to report as unmeasured; rejected because it
+reopens a decision parked on purpose, to hold a credential for a demo.
+
+**§5a's hosted generator stays deferred to §8**, with the trigger already
+recorded there. This section does not pull it forward.
+
+
+### Measured result
+
+Exercised against the real 626-entry index, through a real ASGI client.
+
+| | |
+|---|---|
+| startup, cold start paid at boot | 36 s |
+| `/search`, warm | 120 ms |
+| tests | 272 passing, 2 deselected |
+| documented paths | `/health`, `/search`, `/answer` |
+
+```
+/search  "how does Huffman coding assign codewords"
+  0.757  problem set MIT6_02F12_ps1.pdf, pp.6–7, problem 4
+  0.753  lecture MIT6_02F12_lec01.pdf, slide 18 — "Huffman's Coding Algorithm"
+
+/search  "how does RSA public-key encryption work"
+  abstained — best score 0.565 below threshold 0.620
+```
+
+Three properties confirmed on real data rather than on fakes. The **calibrated θ
+does the work over HTTP**: a term measured to appear zero times in the corpus is
+refused at 0.565, not answered. **Multi-page citations survive** — `pp.6–7,
+problem 4` is §2b's amended locator reaching a client. And a **collapsed hit
+keeps every location**:
+
+```
+2 citations on the top hit for "convolution is commutative":
+  lecture MIT6_02F12_lec10.pdf, slide 21 — "Properties of Convolution"
+  lecture MIT6_02F12_lec11.pdf, slide 14 — "Properties of Convolution"
+```
+
+That is the property §7's tests were written around. §4d merges an identical
+slide appearing in two lectures, and flattening it back to one location in the
+response would discard exactly what §4d exists to preserve — a loss that would
+leave the response well-formed and the answer right, with one of the two places
+quietly gone.
+
+**A defect found by running it, the fifth time in this project.** `deps.py`
+claimed the embedder was loaded once at startup. It is lazy by design — §3a
+keeps importing `embed.py` free of torch — so the app booted reporting
+`status: ok` while unable to serve a single search: the cold start landed on the
+first request, and a missing `sentence-transformers` surfaced as a 500 to
+whoever asked first rather than as a server that refused to start. The embedder
+is now forced to load at boot, which is what the 36 s above is. The suite was
+green throughout, because every test injects a fake embedder that has nothing to
+load.
+
+**Not measured.** No load or concurrency testing. R1 — a slow `/answer` holding
+a worker while `/search` starves — is handled by running the blocking generator
+in a thread pool, and that mitigation is untested under actual concurrent load.
+It is a known gap rather than a verified property.
+
 
 ---
 
