@@ -18,13 +18,27 @@ and the reasoning — including the alternatives that were rejected, so they are
 not quietly reconsidered later. The architecture should be followable from this
 file alone.
 
+**On figures that describe an earlier corpus.** Modules 2–5 were decided and
+measured against a private development corpus of 29 PDFs — 528 chunks, 457 index
+entries — which §8a replaced on 2026-09-10 with MIT OpenCourseWare material: 33
+PDFs, **649 chunks, 626 index entries**. Measurements taken before that swap are
+kept as they were recorded, because they are the evidence those decisions were
+actually made on, and rewriting them would make the reasoning unfollowable. So a
+figure of 528 or 457 in modules 2–5 is a record of what was measured *then*; the
+corpus that ships is the one in `docs/corpus-profile.md`, and §2's measured
+result, §6, §7 and §8 all describe it.
+
 ---
 
 ## 0. Goals and non-goals
 
 **Goal.** Given a natural-language question, find the most relevant passages
-from my own notes and produce a grounded answer that cites them — or say it
-does not know, rather than inventing an answer.
+from a corpus of course material and produce a grounded answer that cites them —
+or say it does not know, rather than inventing an answer.
+
+*(This originally read "from my own notes". Development ran against private
+course notes; §8a replaced them with openly licensed material so the numbers
+could be reproduced. The goal is unchanged; the corpus is not.)*
 
 **Success criteria for v1**
 
@@ -40,9 +54,24 @@ does not know, rather than inventing an answer.
 **Non-goals for v1.** OCR for scanned documents. A real UI beyond a minimal
 demo. Multi-user auth. Fine-tuning any model.
 
-**Language/runtime.** Not formally decided, but the decision list below
-(Ollama, LangChain/LlamaIndex, PDF and PPTX parsing, Python web frameworks)
-assumes Python. Flag it now if you want otherwise.
+**Language/runtime.** Python, settled by use rather than by a separate
+decision.
+
+### How v1 actually did against these
+
+Written at the end, against the criteria as stated rather than as remembered.
+
+| criterion | outcome |
+|---|---|
+| Ingests markdown, PDF and PPTX | **PDF only.** The markdown and PPTX chunkers were deferred until files of those types existed, and none ever did. The schema and the ingest interface stay format-agnostic, so adding them is additive — but two of the three named formats are not implemented. |
+| Retrieval quality measured, before and after tuning | **Met.** §6: recall@5 0.923, MAP 0.728 over 35 hand-written questions, with a baseline run and a calibrated run recorded as comparable artefacts. In-sample, and it says so. |
+| Abstains rather than answering | **Met, and imperfect.** The path works and is scored separately: abstention precision 1.000, recall 0.556. Four of nine unanswerable questions are answered anyway, because the score bands overlap — §4b. |
+| Citations resolvable to file and location | **Met.** Including multi-page locators and the merged citations of a collapsed duplicate, verified through the API. |
+| Every decision recorded with the alternatives it beat | **Met.** Including the ones later evidence overturned, which are kept rather than edited away. |
+
+What v1 does **not** have, stated in one place: two of three input formats, any
+measured comparison against the four baselines it built (§6), and any
+answer-quality metric at all.
 
 ---
 
@@ -184,6 +213,10 @@ in module 6, it turns "structure-aware chunking suits slide decks better" from
 a plausible claim into a measured delta, and shows where the gain is
 concentrated by format. Cheap to build once the chunk schema exists. If it wins
 on some format, that gets reported.
+
+> **Not run.** This comparison was promised to module 6 and module 6 did not
+> make it. The baseline exists in the repo (`chunkers/window.py`); the harness
+> that would sweep it does not. Recorded in §6's *What is not measured*.
 
 Rejected: **semantic chunking** (embed sentences, cut at similarity troughs) —
 costs a full embedding pass per ingest, boundaries shift with the embedding
@@ -466,8 +499,8 @@ a problem is small enough to be one chunk.
 
 Turn chunks into a searchable index.
 
-**Scale sets the terms of every decision below.** The structural chunker
-produces 528 chunks — 35,797 words, 238,074 characters of embedded text, about
+**Scale sets the terms of every decision below.** Measured on the development
+corpus, the structural chunker produced 528 chunks — 35,797 words, 238,074 characters of embedded text, about
 60k tokens. Most published guidance on vector infrastructure is written for
 corpora three to six orders of magnitude larger, and at this size parts of it
 inverts: approximate nearest-neighbour search gives up recall for a speed gain
@@ -540,6 +573,11 @@ over 528 chunks. What actually differs:
 is local: **`bge-base-en-v1.5`**, 768 dimensions, MIT-licensed weights — the
 same licence reasoning as §2a. A hosted implementation is written to the same
 protocol. Module 6 runs the eval set against both and reports the delta.
+
+> **Not run.** This comparison was promised to module 6 and module 6 did not
+> make it. The baseline exists in the repo; the harness that would sweep it does
+> not. Recorded in §6's *What is not measured*.
+
 
 **This is a default, not a measured winner, and it is recorded as one.** The
 harness that would settle it does not exist until module 6. Choosing the local
@@ -750,9 +788,10 @@ near-duplicate pair inside top-5**.
 ### 4a. Dense-only, with BM25 kept as a measured baseline — decided
 
 Retrieval is the dense path already built in §3: embed the query with the bge
-prefix, exhaustive cosine over 457 entries, top-k. A lexical BM25 retriever is
-built alongside it as a **baseline that module 6 measures**, not as a second
-production path — the same shape as §2b, where uniform windowing stays in the
+prefix, exhaustive cosine over every entry in the index — 457 when this was
+decided, 626 on the corpus that ships — then top-k. A lexical BM25 retriever is
+built alongside it as a **baseline for module 6 to measure** (it did not; see
+§6), not as a second production path — the same shape as §2b, where uniform windowing stays in the
 repo so the structural chunker's advantage is a number rather than a claim.
 
 *This reverses the argument that started the section.* The case for hybrid was
@@ -785,6 +824,15 @@ rather than answering as a v1 success criterion, so this path is not optional.
 here. The probe supports the mechanism and cannot supply the number: eight
 queries separate cleanly with a 0.072 gap, and eight queries are not a
 calibration.
+
+> **Settled in §6, and this paragraph's evidence did not survive it.** θ is
+> calibrated to **0.62**. The clean 0.072 gap above is an artefact of eight
+> queries: over 35, the answerable and unanswerable score bands **overlap**, with
+> 4 of 9 unanswerable scoring at or above the lowest answerable question. No
+> threshold separates them, so every value of θ trades a false refusal against a
+> missed refusal, and abstention recall tops out at 0.556 without destroying
+> retrieval. The mechanism this section chose survives; the separation it
+> observed does not.
 
 Rejected on measurement: **a margin rule** (abstain when top-1 is not clearly
 ahead of top-2). It would have had the advantage of being embedder-independent,
@@ -905,9 +953,14 @@ questions it is worse: *why do routers drop packets* returns a homework problem
 where dense returns the lecture slide defining queueing loss. Recorded as a
 baseline observation, not as a result: §6 runs both properly.
 
+> **Not run.** This comparison was promised to module 6 and module 6 did not
+> make it. The baseline exists in the repo; the harness that would sweep it does
+> not. Recorded in §6's *What is not measured*.
+
+
 ---
 
-## 5. Generation — **done: decided, implemented, tested; not yet measured**
+## 5. Generation — **done: decided, implemented, tested; quality never measured**
 
 Produce a grounded answer with citations back to source chunks, or refuse.
 
@@ -925,8 +978,9 @@ them.
 The same shape as §3a, for two of the same reasons and against a materially
 different backdrop.
 
-**Cost decides nothing, again, and this time it is measured.** The 528 chunks
-in `data/chunks.jsonl` total 237,360 characters — mean 450 per chunk, median
+**Cost decides nothing, again, and this time it is measured.** On the
+development corpus, the 528 chunks then in `data/chunks.jsonl` totalled 237,360
+characters — mean 450 per chunk, median
 384, p90 778, max 4,079. A k=5 context is therefore about 2,250 characters at
 the mean and 3,890 at p90. Every candidate model in contention, local or
 hosted, holds that two orders of magnitude over. **Context window is not a
@@ -1114,6 +1168,10 @@ available; rejected because it doubles latency and cost on every query to catch
 a failure whose rate has not been measured, and because a gate that blocks
 answers on the verdict of an unvalidated judge is worse than no gate. If §6
 measures the failure rate and it is high, this reopens.
+
+> **Not run.** Module 6 did not hand-label a sample or measure the judge against
+> a human, so the judge's agreement remains unknown and no grounding rate is
+> reported anywhere. Recorded in §6's *What is not measured*.
 
 **The judge's own accuracy is unmeasured, and reporting it as a metric would
 assert more than was measured.** §6 either hand-labels a sample and reports
@@ -1369,8 +1427,10 @@ chunks raises rather than scoring 0, as §2c requires. All 26 answerable
 questions resolve against the shipped corpus; the multi-hop one resolves to two
 chunks and both count.
 
-Still to build: `metrics.py`, `harness.py` and `compare.py`, then the baseline
-run and the calibration of the four uncalibrated thresholds.
+`metrics.py`, `harness.py`, `calibrate.py` and `compare.py` are built, the
+baseline ran, and θ is calibrated. What the harness does **not** do is listed in
+*What is not measured* below, and four comparisons promised to this module by
+earlier sections are among them.
 
 
 ### Measured result
@@ -1481,13 +1541,38 @@ not have fired whatever the data said. Ranking is now measured at depth 20 while
 they were right for the wrong reason — but the trigger is now actually testable,
 and the verdict above is a measurement instead of an artefact.
 
-#### What is not measured
+#### What is not measured — including four comparisons this module was promised
 
-No answer-level figures. 6a decided grounding rate, citation validity and the
-outcome mix are reported, and `harness.py --answers` computes them, but
+**Four earlier sections deferred a comparison to module 6 and module 6 did not
+run it.** The harness varies the retrieval thresholds and nothing else; it
+records which chunker and embedder produced the index it was given, and never
+builds a second one to compare against. Listed here rather than left as promises
+that read like results:
+
+| promised by | comparison | status |
+|---|---|---|
+| §2b | structure-aware chunker vs the uniform window baseline | **not run** |
+| §3a | local `bge` embedder vs the hosted one | **not run** |
+| §4a | dense retrieval vs the BM25 baseline | **not run** |
+| §5c | the grounding judge against hand-labelled agreement | **not run** |
+| §5a | local vs hosted generation | not run; closed in §8b |
+
+Each of those baselines *exists in the repo* — `chunkers/window.py`,
+`HostedEmbedder`, `retrieval/lexical.py`, `eval/grounding.py` — which is what
+made the promise credible and is also why the gap is worth stating plainly. The
+work left is a harness that sweeps them, not code that does not exist.
+
+**No answer-level figures either.** 6a decided grounding rate, citation validity
+and the outcome mix are reported, and `harness.py --answers` computes them, but
 generation on the local model takes minutes per question on CPU — hours for the
-set, which is not a command to run while sweeping a threshold. `citation_correctness`
-is `—` in every run record here for that reason, not because it is unimplemented.
+set, which is not a command to run while sweeping a threshold.
+`citation_correctness` is `—` in every run record here for that reason, not
+because it is unimplemented.
+
+**So what §6 measured is retrieval quality on one configuration**, calibrated,
+with the abstention path scored and §4c's trigger evaluated. That is less than
+this section originally promised, and the difference is written down here rather
+than absorbed.
 
 **Every figure above is in-sample.** The four thresholds were calibrated on the
 same 35 questions the scores are reported over, which 6c settled deliberately: a

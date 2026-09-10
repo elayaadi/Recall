@@ -80,9 +80,18 @@ that is one file and five chunks. Two questions is not a measurement of it.
 implemented and unrun: generation on the local model is minutes per question on
 CPU, hours across the set.
 
-**The local-versus-hosted generation comparison was never measured.** The design
-puts generation behind a protocol so the two could be compared; the second
-backend was never built, and no number in this repo compares them.
+**Four comparisons the design promised were never run.** Structure-aware
+chunking against a uniform-window baseline, the local embedder against a hosted
+one, dense retrieval against BM25, and the grounding judge against hand-labelled
+agreement. Each baseline exists in the repo — that is what made the promises
+credible — but the eval harness varies the retrieval thresholds and nothing
+else. A fifth, local against hosted generation, was closed by deciding not to
+build the second backend at all.
+
+So what is measured here is **retrieval quality on one configuration**: 
+calibrated, with the abstention path scored and the reranker question settled by
+a condition written down in advance. That is less than the design set out to
+compare, and the difference is written down rather than absorbed.
 
 ## How it works
 
@@ -130,7 +139,8 @@ hand-written and corpus-bound: free to swap before, expensive after.
 
 ## Known limitations
 
-- Reported metrics are in-sample, as above.
+- Reported metrics are in-sample, as above, and cover retrieval on one
+  configuration — see the four comparisons that were never run.
 - Abstention misses four of nine unanswerable questions, and the score bands
   overlap, so no threshold fixes it on this embedder.
 - Generation output varies between runs at temperature 0, so answer-level
