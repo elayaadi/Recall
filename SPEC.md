@@ -1246,15 +1246,15 @@ the local path alone, with no delta, which §5a now says outright.
 
 ---
 
-## 6. Evaluation — **decided; blocked on a module 2 defect**
+## 6. Evaluation — **decided; question set written, harness in progress**
 
 A hand-written question set, scored with real metrics, run before and after any
 tuning. This is where every deferral in §2–§5 comes due.
 
-**Status.** 6a, 6b and 6c are settled below. Implementation has not started: the
-§8a corpus swap ran first, as §8a requires, and it surfaced a chunking defect
-that has to be settled before any label is written. See *Blocked on* at the end
-of this section.
+**Status.** 6a, 6b and 6c are settled below. The §8a corpus swap ran first, as
+§8a requires, and the chunking defect it surfaced is fixed (§2, §2b). The
+question set and the label resolver are written; the metrics and the run harness
+are not. See *Progress* at the end of this section.
 
 ### 6a. Metrics — decided: Recall@k, MAP, abstention precision/recall, plus answer-level figures
 
@@ -1333,16 +1333,34 @@ too few points to calibrate against. The honest option at this size is to report
 in-sample and label it, rather than to imply a generalisation the set cannot
 support.
 
-### Blocked on: the §8a swap exposed a module 2 defect
+### Progress
 
-The corpus swap ran first, as §8a requires. The measured result is in
-§2 — *After the §8a swap*. In short: the deck chunker transfers to the new
-corpus intact and the problem-sheet chunker does not, reaching **60% of its
-source text** and producing chunks up to **21,531 characters** that carry a
-single page number apiece. No question set can be written against that, because
-§2c anchors every label to a location and a verbatim snippet — and a label
-resolving to a four-page chunk cited as one page encodes the defect into the
-only expensive human artefact in the project.
+**The §8a swap is done and the defect it exposed is fixed** — §2's *After the
+§8a swap* records both, and §2b carries the size-bound amendment that followed.
+Module 6 was blocked on that and is not any more.
+
+**The question set is written: 35 questions in
+`eval/questions/questions.toml`.** Composed as 6b decided — 17 deck, 7 problem
+sheet, 2 syllabus, and 9 unanswerable, a quarter of the set. Written from the
+source documents before anything was run through retrieval, per this section's
+own rule.
+
+Every unanswerable question turns on a term measured to appear **zero** times in
+the corpus, matched on word boundaries and recorded in a `note` beside the
+question. That check caught two candidates that looked absent and were not:
+`HTTP` occurs 91 times, all of them the OCW fair-use URL rather than the
+protocol, and `DNS`, `BGP` and `IPv6` each appear once in a single
+Internet-history timeline slide. §4 made the opposite error twice — logging an
+absent term as a retrieval failure — and this is the same check run from the
+other direction.
+
+**`eval/labels.py` resolves a label to chunks**, and a label matching zero
+chunks raises rather than scoring 0, as §2c requires. All 26 answerable
+questions resolve against the shipped corpus; the multi-hop one resolves to two
+chunks and both count.
+
+Still to build: `metrics.py`, `harness.py` and `compare.py`, then the baseline
+run and the calibration of the four uncalibrated thresholds.
 
 ---
 

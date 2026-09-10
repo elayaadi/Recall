@@ -1,0 +1,329 @@
+# Recall — the gold question set. SPEC.md 6b.
+#
+# Anchoring is 2c's: a label names a source file and a human-readable location,
+# and resolves by a **verbatim snippet** matched whitespace- and case-normalised.
+# The snippet is what binds; the location is for a human checking the label by
+# hand. A label matching zero chunks is a hard error that fails the run, never a
+# silent score of 0 — a stale label must not be able to look like a regression.
+#
+# Written from the source documents before any of them was run through
+# retrieval, per 6b. Questions written while watching output drift toward what
+# the system already finds, and then the score measures the drift.
+#
+# Composition (6b: stratified, with a per-format breakdown reported beside the
+# headline, and about a quarter unanswerable):
+#
+#   deck            17    problem_sheet  7    syllabus  2     = 26 answerable
+#   unanswerable     9                                        = 35 total
+#
+# Every unanswerable question was checked against the corpus before being
+# written: each turns on a term appearing zero times, matched on word
+# boundaries. 4 recorded that mistake twice — CIDR and "three way handshake"
+# were both nearly logged as retrieval failures when the terms were simply
+# absent — so absence here is measured, not assumed.
+
+# ─────────────────────────── decks ───────────────────────────
+
+[[question]]
+id = "d01"
+kind = "factual"
+text = "How does Huffman's algorithm choose which symbols to combine at each step?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec01.pdf"
+where = "slide 18"
+snippet = "Choose the two members of S having lowest probabilities"
+
+[[question]]
+id = "d02"
+kind = "factual"
+text = "What does entropy tell you about the number of bits needed to encode a message?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec01.pdf"
+where = "slide 14"
+snippet = "This is a lower bound on the number of binary digits"
+
+[[question]]
+id = "d03"
+kind = "factual"
+text = "Why is LZW described as a universal compression method?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec02.pdf"
+where = "slide 21"
+snippet = "need to know source statistics in advance"
+
+[[question]]
+id = "d04"
+kind = "factual"
+text = "What is Hamming distance?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec03.pdf"
+where = "slide 21"
+snippet = "The number of bit positions in which the corresponding bits of two encodings of the same length are different"
+
+[[question]]
+id = "d05"
+kind = "multi-hop"
+text = "How many bit errors can a parity check code detect, and how does that follow from its minimum Hamming distance?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec03.pdf"
+where = "slide 23"
+snippet = "we can all detect patterns of"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec03.pdf"
+where = "slide 25"
+snippet = "Minimum Hamming distance of parity check code is 2"
+
+[[question]]
+id = "d06"
+kind = "factual"
+text = "How is a parity bit chosen for a message?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec03.pdf"
+where = "slide 25"
+snippet = "Add a parity bit to message of length k to make the total number of 1 bits even"
+
+[[question]]
+id = "d07"
+kind = "factual"
+text = "What does channel capacity represent?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec03.pdf"
+where = "slide 17"
+snippet = "the most information we can expect to send through the channel on average"
+
+[[question]]
+id = "d08"
+kind = "factual"
+text = "What is an eye diagram used for?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec11.pdf"
+where = "slide 2"
+snippet = "Eye diagrams make it easy to find"
+
+[[question]]
+id = "d09"
+kind = "factual"
+text = "Is convolution commutative?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec11.pdf"
+where = "slide 14"
+snippet = "convolution is commutative"
+
+[[question]]
+id = "d10"
+kind = "factual"
+text = "What does convolution in the time domain correspond to in the frequency domain?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec13.pdf"
+where = "slide 12"
+snippet = "convolution in time has become multiplication"
+
+[[question]]
+id = "d11"
+kind = "factual"
+text = "What does modulation do to the spectrum of a signal?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec15.pdf"
+where = "slide 30"
+snippet = "Spectrum of modulated signal comprises half-height"
+
+[[question]]
+id = "d12"
+kind = "factual"
+text = "What happens to the demodulated signal if the receiver oscillator is out of phase?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec16.pdf"
+where = "slide 13"
+snippet = "we are demodulating by a sine rather than a cosine"
+
+[[question]]
+id = "d13"
+kind = "factual"
+text = "Which modulation scheme does 802.11b use at its basic 1 Mbit/s rate?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec16.pdf"
+where = "slide 21"
+snippet = "At the basic-rate of 1 Mbit/s, it uses DBPSK"
+
+[[question]]
+id = "d14"
+kind = "factual"
+text = "What is processing delay in a network?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec17.pdf"
+where = "slide 6"
+snippet = "Time spent by the hosts and switches to process"
+
+[[question]]
+id = "d15"
+kind = "factual"
+text = "In slotted Aloha, how does a backlogged node decide when to transmit?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec18.pdf"
+where = "slide 4"
+snippet = "it sends a packet in the next time slot with probability"
+
+[[question]]
+id = "d16"
+kind = "factual"
+text = "What value of p maximizes utilization in stabilized Aloha?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec18.pdf"
+where = "slide 5"
+snippet = "maximizes utilization, where N is the number"
+
+[[question]]
+id = "d17"
+kind = "factual"
+text = "How does a node find out which of its neighbours are alive in a routing protocol?"
+[[question.labels]]
+file = "lecture MIT6_02F12_lec19.pdf"
+where = "slide 2"
+snippet = "Send HELLO packet to each neighbor"
+
+# ──────────────────────── problem sheets ────────────────────────
+
+[[question]]
+id = "p01"
+kind = "factual"
+text = "In the information problem, how many bits do X and Y differ in?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps1.pdf"
+where = "problem 1"
+snippet = "differ in exactly 4 bits"
+
+[[question]]
+id = "p02"
+kind = "factual"
+text = "What does conv_decode produce from an encoded bit-stream?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps3.pdf"
+where = "problem 2"
+snippet = "the maximum-likelihood estimate of the encoded message"
+
+[[question]]
+id = "p03"
+kind = "factual"
+text = "What voltages does Ben Bitdiddle use to send a binary 1 and a binary 0?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps4.pdf"
+where = "problem 1"
+snippet = "Ben Bitdiddle is running a communication link between a sender and receiver"
+
+[[question]]
+id = "p04"
+kind = "factual"
+text = "How is the sampling rate expressed in terms of the sampling interval T?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps6.pdf"
+where = "problem 3"
+snippet = "What is the sampling rate f (in samples/sec) expressed in terms of"
+
+[[question]]
+id = "p05"
+kind = "factual"
+text = "How does a node using a contention window decide how long to wait before sending?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps7.pdf"
+where = "problem 5"
+snippet = "sends a packet t idle time slots after the current slot"
+
+[[question]]
+id = "p06"
+kind = "factual"
+text = "Which algorithm do the nodes in Alyssa's link-state network run?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps8.pdf"
+where = "problem 2"
+snippet = "algorithm to compute minimum-cost routes"
+
+[[question]]
+id = "p07"
+kind = "factual"
+text = "How long is a Fritter message?"
+[[question.labels]]
+file = "problem set MIT6_02F12_ps9.pdf"
+where = "problem 2"
+snippet = "messages are only 40 bytes long"
+
+# ───────────────────────── syllabus ─────────────────────────
+
+[[question]]
+id = "s01"
+kind = "factual"
+text = "How much of the final grade do the problem sets carry?"
+[[question.labels]]
+file = "syllabus.pdf"
+where = "grading table"
+snippet = "Problem sets 5% each, 45% total"
+
+[[question]]
+id = "s02"
+kind = "factual"
+text = "Do the problem sets require programming?"
+[[question.labels]]
+file = "syllabus.pdf"
+where = "page 1"
+snippet = "The problem sets involve programming"
+
+# ─────────────────────── unanswerable ───────────────────────
+#
+# Each term below appears zero times in the corpus, matched on word boundaries.
+# These score the abstention path, which 0 makes a v1 success criterion and
+# which no ranking metric can see. They are deliberately *adjacent* to what the
+# course covers — a system that answers them is reaching past its context, not
+# failing to find something obscure.
+
+[[question]]
+id = "u01"
+kind = "unanswerable"
+text = "How do Reed-Solomon codes correct burst errors?"
+note = "the course covers block and convolutional codes; Reed-Solomon appears 0 times"
+
+[[question]]
+id = "u02"
+kind = "unanswerable"
+text = "What advantage do LDPC codes have over convolutional codes?"
+note = "LDPC appears 0 times"
+
+[[question]]
+id = "u03"
+kind = "unanswerable"
+text = "How does RSA public-key encryption work?"
+note = "RSA, public key and cryptography each appear 0 times"
+
+[[question]]
+id = "u04"
+kind = "unanswerable"
+text = "What does a TLS handshake establish between a client and a server?"
+note = "TLS and handshake each appear 0 times"
+
+[[question]]
+id = "u05"
+kind = "unanswerable"
+text = "How does the spanning tree protocol prevent switching loops?"
+note = "spanning tree appears 0 times; the course covers routing, not bridging"
+
+[[question]]
+id = "u06"
+kind = "unanswerable"
+text = "How does multicast routing differ from unicast routing?"
+note = "multicast appears 0 times; unicast routing is covered"
+
+[[question]]
+id = "u07"
+kind = "unanswerable"
+text = "How is a Kalman filter used to estimate a signal?"
+note = "Kalman appears 0 times; the course covers LTI filtering"
+
+[[question]]
+id = "u08"
+kind = "unanswerable"
+text = "What traffic does a stateful firewall block?"
+note = "firewall appears 0 times"
+
+[[question]]
+id = "u09"
+kind = "unanswerable"
+text = "How does traceroute discover the path to a host?"
+note = "traceroute appears 0 times; forwarding and routing are covered"
